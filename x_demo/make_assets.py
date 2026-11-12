@@ -148,6 +148,7 @@ def main():
         ("spike_s2_escrow.py  ·  native NEAR escrow", os.path.join(REPO, "s2_last_run.txt"), "04_escrow_roundtrip.png"),
         ("spike_s3_ft_escrow.py  ·  NEP-141 (wNEAR) escrow", os.path.join(REPO, "s3_last_run.txt"), "05_stablecoin.png"),
         ("spike_s4_file_escrow.py  ·  real FILE, sha256 identity", os.path.join(REPO, "s4_last_run.txt"), "08_file_escrow.png"),
+        ("spike_s7_two_agent_loop.py  ·  buyer + 2 sellers, bid → award → settle", os.path.join(REPO, "s7_last_run.txt"), "10_agent_loop.png"),
     ]
     if "--chain" in sys.argv or True:
         cards.append(("live chain state — read from the RPC", None, "09_chain_state.png"))

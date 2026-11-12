@@ -225,6 +225,31 @@ Harness fixes made alongside it (each one was a real failure mode):
 - a stalled RPC used to crash the run with a traceback — now a reported `TIMEOUT`;
 - accounts are overridable (`POD_ESCROW`/`POD_BUYER`/`POD_SELLER`/`POD_CONTRACT`/`POD_RPC`).
 
+## S7 — a working agent-economy loop
+
+Two seller agents and a buyer agent, coordinated by a local script; **settlement is
+on chain**. This is the artifact that makes the `swarms`/`agents` fit concrete.
+
+| step | result |
+|---|---|
+| buyer posts a job (spec, budget 2 NEAR, deadline) | — |
+| two sellers quote a price **and commit a content hash** | 0.385 / 0.377 NEAR |
+| buyer awards the cheapest within budget | 0.377 NEAR to the second seller |
+| buyer escrows **against the winner's committed hash** | PASS |
+| winner delivers the committed bytes | PASS |
+| the contract hashes them itself → predicate satisfied | PASS |
+| `release` → winner paid | PASS (**+0.3770 NEAR** measured) |
+| round 2: seller delivers **substituted** bytes | tx succeeds (delivery is honest) |
+| `delivery_ok` → false, `release` REVERTS | PASS |
+| buyer refunded at the deadline | PASS |
+
+```
+VERDICT: VALIDATED — 10/10. Real funds moved on NEAR.
+```
+
+**Honest boundary:** the bidding round is coordinated by the script. Only
+settlement is on chain; an on-chain sealed-bid contract is the next step.
+
 ## Reproduce
 
 ```bash

@@ -3,64 +3,62 @@
 Repo is public ✅ · assets generated from real output ✅ · **you post it** (I can't
 and won't publish to X).
 
-Post 1 carries the **video**; posts 2–5 carry the images. (X allows a video *or*
-images in one post, not both — so the thread splits them.)
+Post 1 carries a video; posts 2–5 carry the images. (X allows a video *or* images
+in one post, not both — so the thread splits them.)
+
+> **The video needs re-recording.** `demo.mp4` still shows the predicate demo
+> (satisfied → tampered), which is no longer the lead story. The loop is now the
+> headline, so either re-record per the shot list at the bottom, or post the
+> stills instead — `10_agent_loop.png` carries the whole loop with its tx links.
 
 ---
 
-## POST 1 — attach `demo.mp4`  ·  253 chars
+## POST 1 — attach the video (or `10_agent_loop.png`)  ·  280 chars
 
 ```
-Agents can pay each other. They can't verify delivery.
+Two AI agents just did business.
 
-Proof-of-Delivery: escrow that pays a seller only when the delivery is machine-verified on chain.
+A buyer posted a job. Two sellers bid a price plus a sha256 of what they'd deliver. The buyer escrowed against the winning hash. The winner delivered; the contract hashed the bytes and paid.
 
-Change one character and the payout reverts.
-
-Built at NEAR HACKATHON
-@NEARProtocol #NEARHackathon
+Built at NEAR HACKATHON · @NEARProtocol #NEARHackathon
 ```
 
-## POST 2 — attach `01_commitment_satisfied.png` + `02_commitment_rejected.png`  ·  268 chars
+## POST 2 — attach `10_agent_loop.png`  ·  272 chars
 
 ```
-The predicate is a 4-layer tamper-evident commitment from pure integer math — no oracle, no host functions.
+The trick is where the buyer gets the expected hash.
 
-3 independent implementations agree byte-for-byte: the on-chain contract, a Python verifier, and the browser demo.
+The seller's quote carries it: "0.377 NEAR, and here is the sha256 of exactly what you will receive."
 
-One edit breaks at least 3 of the 4 layers.
+So the seller commits to WHAT it will deliver before it is paid — and the contract holds it to that, byte for byte.
 ```
 
-## POST 3 — attach `04_escrow_roundtrip.png` + `05_stablecoin.png`  ·  241 chars (X-weighted; 297 raw, the URL counts as 23)
+## POST 3 — attach `09_chain_state.png`  ·  272 chars
 
 ```
-The complete moment, real testnet, real funds.
+And the adversarial case, on real testnet:
 
-fund -> deliver -> release pays the seller (+1.9998 NEAR)
-tampered delivery -> release REVERTS on chain
-deadline missed -> buyer refunded
+A seller won, then delivered different bytes. The contract hashed them, said no, and release() REVERTED. The seller was not paid. At the deadline the buyer was refunded.
 
-Here is that revert, on chain: https://testnet.nearblocks.io/txns/Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1
+No arbiter. No dispute form. The rule is in the contract.
 ```
 
-## POST 4 — attach `08_file_escrow.png` + `09_chain_state.png`  ·  240 chars
+## POST 4 — attach `04_escrow_roundtrip.png` + `10_agent_loop.png`  ·  242 chars (X-weighted)
 
 ```
-But how does the buyer know it's the expected FILE?
+A buyer agent, two seller agents, a bidding round, an award, a delivery, a payout of +0.3770 NEAR, and a swap attempt that failed — all measured, all in the repo:
 
-The buyer commits the file's sha256 before funding. The contract decodes the delivered bytes and hashes them itself, paying only on an exact match.
-
-One byte different: rejected on chain.
-```
-
-## POST 5 — attach `03_verify_all.png`  ·  242 chars (217 as X counts the URL)
-
-```
-Contract + an independent verifier you can run yourself: https://github.com/sudo-ai-git/proof-of-delivery
+https://github.com/sudo-ai-git/proof-of-delivery
 
 One command: python3 verify_all.py --build --selftest
+```
 
-What would you use verifiable delivery for first — data, compute, or API access?
+## POST 5 — attach `03_verify_all.png`  ·  163 chars
+
+```
+What should agents be able to buy from each other first — data, compute, or API access?
+
+Contract + an independent verifier you can run yourself. Feedback welcome.
 ```
 
 Every post is within the 280-char limit (URLs counted as 23, per t.co).
@@ -69,44 +67,43 @@ Every post is within the 280-char limit (URLs counted as 23, per t.co).
 
 ## Asset manifest
 
-All files are in `x_demo/` and are also committed to the repo under `screenshots/`.
+All files are in `x_demo/` and are also committed
+to the repo under `screenshots/`.
 
 | file | size | what's in it |
 |---|---|---|
-| `demo.mp4` | 1280×900, ~9s | screen recording: commitment satisfied → one character changed → REJECTED → reset |
-| `01_commitment_satisfied.png` | 2200×2162 | browser demo, all 4 layers **match** |
-| `02_commitment_rejected.png` | 2200×2156 | after one edit, layers **BROKEN**, verdict REJECTED |
-| `03_verify_all.png` | 2880×666 | `verify_all.py --build --selftest` → **ALL GATES PASS (4/4)** |
-| `04_escrow_roundtrip.png` | 2880×868 | native-NEAR run — release pays, tamper reverts, refund; **tx links visible** |
-| `05_stablecoin.png` | 2880×788 | NEP-141 run — **VERDICT: VALIDATED**, wNEAR grew; **tx links visible** |
-| `08_file_escrow.png` | 2880×828 | file run — sha256 escrow, 1-byte substitution rejected; **tx links visible** |
+| `10_agent_loop.png` | 2880×~1300 | **the loop**: buyer posts, two sellers quote price + sha256, award, escrow, delivery, payout, adversarial swap → revert → refund; **tx links visible** |
 | `09_chain_state.png` | 2880×706 | **live chain read**: code_hash + FAILURE/SUCCESS verdict per tx |
+| `04_escrow_roundtrip.png` | 2880×868 | native-NEAR run — release pays, tamper reverts, refund; tx links visible |
+| `05_stablecoin.png` | 2880×788 | NEP-141 run — VALIDATED, wNEAR grew; tx links visible |
+| `08_file_escrow.png` | 2880×828 | file run — sha256 escrow, 1-byte substitution rejected |
+| `03_verify_all.png` | 2880×666 | `verify_all.py --build --selftest` → **ALL GATES PASS (5/5)** |
+| `01/02_commitment_*.png` | 2200×~2160 | the browser demo, satisfied → tampered |
+| `demo.mp4` | 1280×900, ~9s | **stale** — shows the old predicate demo, not the loop |
 
-**No `06_/07_explorer_*.png`.** The public explorers are Cloudflare-walled to
-headless browsers ("Performing security verification"), so a screenshot of the
-transaction page isn't obtainable — `09_chain_state.png` carries the same facts
-read straight from the RPC instead, which is stronger anyway (no UI to trust).
-Every transaction hash appears in full in the images and in the repo's README;
-each was re-queried against the RPC and resolves.
+**No explorer screenshots.** nearblocks and the official explorer are
+Cloudflare-walled to headless browsers ("Performing security verification"), so a
+transaction-page screenshot isn't obtainable — `09_chain_state.png` carries the
+same facts read straight from the RPC instead, which is stronger (no UI to trust).
+Every tx hash is shown in full in the images and in the repo's README, and each
+was re-queried against the RPC and resolves.
 
-The images are generated by `make_assets.py` from **actual** captured output: the
-terminal-card text is read from `s2_last_run.txt` / `s3_last_run.txt` /
-`s4_last_run.txt` / `verify_all.out`; the browser shots are real renders of
-`demo/index.html`; the chain-state card is a live RPC query. Nothing is a mockup.
+Images are generated by `make_assets.py` from **actual** captured output: card
+text is read from the `*_last_run.txt` logs, the browser shots are real renders of
+`demo/index.html`, and the chain-state card is a live RPC query. Nothing is a mockup.
 
 ## Before you hit post — checklist
 
-- [ ] Repository is public → it is (`sudo-ai-git/proof-of-delivery`, anonymous fetch returns 200)
+- [ ] Repository is public → it is (`sudo-ai-git/proof-of-delivery`, anonymous fetch 200)
 - [ ] Post says it was built at NEAR HACKATHON → yes, post 1
 - [ ] Post tags **@NEARProtocol** and **#NEARHackathon** → yes, post 1
-- [ ] Demo video or screenshots attached → video on post 1; screenshots on 2–5
+- [ ] Demo video or screenshots attached → **stills are fine**; attach `10_agent_loop.png`
 - [ ] Tag @NearLegion / @NearBuilders (optional, more reach)
 - [ ] Paste the resulting post URL back here so I can put it in the submission payload
 
-## Video shot list (if you'd rather re-record it yourself, ~60–75s)
+## Video shot list (re-record, ~60–75s)
 
-1. (0–8s) Problem: "agents can pay; they can't verify delivery."
-2. (8–20s) `python3 verifier.py "agent deliverable v1"` → commitment; edit one char → mismatch count.
-3. (20–45s) `python3 spike_s2_escrow.py` — narrate the PASS lines: fund → deliver → release pays the seller; then the mismatched delivery and the on-chain revert.
-4. (45–60s) `python3 spike_s4_file_escrow.py` — the file case: correct file pays, one-byte-substituted file is rejected.
-5. (60–75s) Repo, NEAR's role, the closing question.
+1. **(0–8s) Problem.** "Agents can pay each other. They can't verify delivery."
+2. **(8–40s) The loop.** `python3 spike_s7_two_agent_loop.py` — let it run and narrate the lines as they appear: the job, the two quotes with their sha256, the award, the escrow, and **the winner getting paid (+0.3770 NEAR)**.
+3. **(40–55s) The adversarial round.** The same run's second half: the seller swaps the bytes → `delivery_ok = false` → `release` **reverts** → the buyer is **refunded**.
+4. **(55–75s) Ask.** Repo, one command, closing question.

@@ -1,12 +1,47 @@
 # Proof-of-Delivery — escrowed agent payments that release only on verified delivery
 
-**NEAR HACKATHON entry · tracks: `agents`, `security`, `swarms`, `open`**
+**NEAR HACKATHON entry · tracks: `swarms`, `agents`, `open`, `security`**
+
+> Track choice is deliberate, not incidental. The live submission directory at
+> the time of writing shows `security` and `agents` are the **two most crowded
+> tracks in the hackathon** (~300 entries each), while `swarms` has ~60. A
+> submission is scored separately in every track it lists, so the thin track is
+> where a deeply-verified settlement primitive has its best shot — and an escrow
+> with a bidding round *is* the "coordination market / intent-based settlement"
+> that `swarms` asks for.
 
 ## The problem (one line)
 
 AI agents can pay each other, but a buyer agent has no way to trust that a
 seller agent actually delivered — so agent commerce runs on trust or a human
 referee. This contract removes the referee.
+
+## A working agent-economy loop (the demo)
+
+Not a contract looking for users — two agents transacting. `spike_s7_two_agent_loop.py`
+runs the whole loop against the deployed contract; every settlement below is real:
+
+```
+1. BUYER  posts a job: a spec, a budget (2 NEAR), a deadline
+2. SELLER loop4 quotes 0.385 NEAR, committing sha256=4891535c…   <- a price AND a promise
+   SELLER 013   quotes 0.377 NEAR, committing sha256=2ee2a838…      about WHAT it will deliver
+3. BUYER  awards to 013 at 0.377 (outbid: loop4) and escrows against
+          013's COMMITTED HASH — this is where the buyer's expected
+          hash comes from, not from a guess
+4. WINNER produces the artifact and delivers the bytes
+5. CONTRACT hashes the bytes itself -> predicate satisfied -> release() -> winner PAID
+          winner balance 9.9961 -> 10.3731 NEAR  (+0.3770)
+6. ROUND 2, adversarial: the seller wins, then delivers SUBSTITUTED bytes
+          -> delivery_ok = false -> release() REVERTS -> the seller is not paid
+          -> at the deadline the buyer is REFUNDED
+```
+
+The quote carries the commitment, so a seller commits to *what* it will deliver
+before it is paid — and the contract holds it to that, byte for byte.
+
+**Honest boundary:** the bidding round is coordinated by this script (a local
+coordinator). Only the settlement is on chain. Making the round itself an
+on-chain sealed-bid contract is the natural next step.
 
 ## What it is
 
@@ -198,6 +233,10 @@ design:
 | S4 | `release` — pays for the **correct** file | `4Ku5QTBJadTypo44rsmsCHXbAi3ez8cKevw2csvEvJFU` |
 | S4 | substituted file delivered (the tx itself is honest) | `EqSxt4eL6UEPTz3Te5FGBYdFMTRSPRbfPQ4AFh5nPmKW` |
 | S4 | **`release` on the substituted file → FAILURE** | `Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1` |
+| S7 | award + escrow against the seller's **committed** hash | `91AMDus7gWTrAEdTBjENcxXKNmcRPTWEnxMLud1LhqqB` |
+| S7 | winner delivers the committed bytes | `CBaSzVzyvcJmN165qn93bsTPRUy961qoQs9uB9CHsQKy` |
+| S7 | `release` → **winner paid** (+0.3770 NEAR) | `6Kv3ZqxTN8vBTgSf1knvDKu9CPjMWzjTLeSrnpjvTNv2` |
+| S7 | refund after the adversarial round | `47a9ozsJicQ2jH391YYRKPv71hgSNESz2PoLa9LgHGrg` |
 
 You do not have to trust the explorer UI (it also rate-limits bots). Query the
 chain yourself:
@@ -218,7 +257,8 @@ Committed under [`screenshots/`](screenshots/) — generated from real output, n
 
 | file | shows |
 |---|---|
-| `screenshots/09_chain_state.png` | live chain read: `code_hash 5khSThuj…` and the FAILURE/SUCCESS verdict per transaction |
+| `screenshots/10_agent_loop.png` | **the agent-economy loop** — buyer posts, two sellers quote price + sha256, award, escrow, delivery, payout, adversarial swap → revert → refund |
+| `screenshots/09_chain_state.png` | live chain read: `code_hash` and the FAILURE/SUCCESS verdict per transaction |
 | `screenshots/08_file_escrow.png` | the file run — sha256 escrow, one-byte substitution rejected (tx links visible) |
 | `screenshots/04_escrow_roundtrip.png` | native-NEAR run — release pays, tamper reverts, refund (tx links visible) |
 | `screenshots/05_stablecoin.png` | NEP-141 run — VERDICT VALIDATED (tx links visible) |
@@ -313,6 +353,12 @@ python3 spike_s1_commitment_parity.py
 python3 spike_s6_commitment_collision.py
 #   -> finds a FULL 4-layer collision in ~37,417 permutations (0.8 s), because
 #      three of the four layers are invariant under permutation.
+
+# 10. The agent-economy loop (post -> bid -> award -> deliver -> settle):
+python3 spike_s7_two_agent_loop.py
+#   -> a buyer agent, two seller agents quoting a price + a content hash, an
+#      award, a delivery, a real payout (+0.3770 NEAR), and an adversarial
+#      seller who swaps the artifact and is NOT paid (buyer refunded).
 ```
 
 The on-chain spikes take time and funds. They accept overrides so you can run
@@ -360,6 +406,7 @@ spike_s6_commitment_collision.py  measures how weak the 4-layer checksum is (fin
 spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
 spike_s4_file_escrow.py  real FILE escrow by sha256, incl. a 1-byte substitution
 spike_s5_settlement_guard.py  settlement state machine: repeat release/refund are rejected
+spike_s7_two_agent_loop.py  the agent-economy demo: buyer + 2 sellers, bid → award → settle
 exploit_repro_pod3.txt   the measured double-payout output that motivated pod-4
 build/release/proof-of-delivery.wasm  committed so code_hash == sha256(wasm) is offline-checkable
 asset_A.bin, asset_B.bin the two test files (differ by one byte)
