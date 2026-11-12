@@ -1,16 +1,16 @@
 S2 spike — Proof-of-Delivery escrow round trip (testnet, strict)
   predicate (expected commitment) = 1fd2a2d5-d4-41-16
-  [PASS] create_deal escrows 2 NEAR -test-015.testnet]: deal ok1794457215 funded with NEAR by nft-repo-test-015.testnet Transaction Id 5D3sgBtEm3WveXact9pGhWoZJ2JBSnS6VDUvUXLgwQxf Open the explorer for more info: https://testnet.nearblocks.io/txns/5D3sgBtEm3WveXact9pGhWoZJ2JBSnS6VDUvUXLgwQxf '' 
+  [PASS] create_deal escrows 2 NEAR -test-015.testnet]: deal ok1794462137 funded with NEAR by nft-repo-test-015.testnet Transaction Id 36ohcLANfkhag2LmTDqGkzVsKuaTM1SrP3UtHWzneU5w Open the explorer for more info: https://testnet.nearblocks.io/txns/36ohcLANfkhag2LmTDqGkzVsKuaTM1SrP3UtHWzneU5w '' 
   [PASS] deal persisted on chain got={"token":"","buyer":"nft-repo-test-015.testnet","seller":"nft-repo-loop4.testnet
-  [PASS] deliver by seller og [nft-repo-test-015.testnet]: delivered ok1794457215 commitment=1fd2a2d5-d4-41-16 Transaction Id FaM3f4nr8EXdxG5qz3vPrc9xihCD9Tuywr132CWMWyks Open the explorer for more info: https://testnet.nearblocks.io/txns/FaM3f4nr8EXdxG5qz3vPrc9xihCD9Tuywr132CWMWyks '' 
+  [PASS] deliver by seller og [nft-repo-test-015.testnet]: delivered ok1794462137 commitment=1fd2a2d5-d4-41-16 Transaction Id AYRxsKrid9D7uoDftyVJccNAYey8hWfksZ714dnwrrnJ Open the explorer for more info: https://testnet.nearblocks.io/txns/AYRxsKrid9D7uoDftyVJccNAYey8hWfksZ714dnwrrnJ '' 
   [PASS] delivery_ok -> true 
-  [PASS] release pays the seller q 	Log [nft-repo-test-015.testnet]: released ok1794457215 to nft-repo-loop4.testnet Transaction Id 9pAse5XU2s1Ekn85pz3uMLzHY9ZA8JNqYwX2pr4ZtSzR Open the explorer for more info: https://testnet.nearblocks.io/txns/9pAse5XU2s1Ekn85pz3uMLzHY9ZA8JNqYwX2pr4ZtSzR '' 
+  [PASS] release pays the seller r 	Log [nft-repo-test-015.testnet]: released ok1794462137 to nft-repo-loop4.testnet Transaction Id HXoGhhwZw7v6CgP8jRd4jVFDKzYrcoqHFem42RbyA3V5 Open the explorer for more info: https://testnet.nearblocks.io/txns/HXoGhhwZw7v6CgP8jRd4jVFDKzYrcoqHFem42RbyA3V5 '' 
   [PASS] seller balance +~2 NEAR delta=+1.9998 NEAR
   [PASS] deal marked released 
   [PASS] delivery_ok -> false on mismatch 
-  [PASS] release REJECTS a non-matching delivery ery does not satisfy the predicate, filename: \"assembly/index.ts\" line: 214 col: 3"}}}} 
-  [PASS] refund BEFORE deadline is rejected act panicked: deadline not reached, filename: \"assembly/index.ts\" line: 224 col: 3"}}}} 
+  [PASS] release REJECTS a non-matching delivery ery does not satisfy the predicate, filename: \"assembly/index.ts\" line: 258 col: 3"}}}} 
+  [PASS] refund BEFORE deadline is rejected act panicked: deadline not reached, filename: \"assembly/index.ts\" line: 268 col: 3"}}}} 
      waiting 45s for the deadline …
-  [PASS] refund AFTER deadline succeeds Log [nft-repo-test-015.testnet]: refunded rf1794457339 to nft-repo-test-015.testnet Transaction Id Aw8y9cCf92JcHzhNvWMHQ2BX2aEkWgrDxMdeEBkxft4t Open the explorer for more info: https://testnet.nearblocks.io/txns/Aw8y9cCf92JcHzhNvWMHQ2BX2aEkWgrDxMdeEBkxft4t '' 
+  [PASS] refund AFTER deadline succeeds Log [nft-repo-test-015.testnet]: refunded rf1794462200 to nft-repo-test-015.testnet Transaction Id DBcWuch8ShjGacxd1UhYmoCxETebFFB3TNJYoCzRLmKJ Open the explorer for more info: https://testnet.nearblocks.io/txns/DBcWuch8ShjGacxd1UhYmoCxETebFFB3TNJYoCzRLmKJ '' 
 
 VERDICT: VALIDATED — full escrow round trip works on testnet with strict checks: payable fund, seller-only deliver, on-chain predicate check, release pays the seller, mismatched delivery is REJECTED, and an unsatisfied deal refunds the buyer after the deadline.

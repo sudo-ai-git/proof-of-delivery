@@ -24,9 +24,34 @@ ESCROW = "nft-repo-test-015.testnet"
 BUYER = "nft-repo-test-015.testnet"
 SELLER = "nft-repo-loop4.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH=os.path.join(HERE, "node_modules", ".bin") + os.pathsep + os.environ.get("PATH", ""))
+ENV = dict(os.environ,
+           NEAR_TESTNET_RPC=os.environ.get("NEAR_TESTNET_RPC", "https://rpc.testnet.fastnear.com"),
+           PATH=os.path.join(HERE, "node_modules", ".bin") + os.pathsep + os.environ.get("PATH", ""))
 
 FAILS = []
+
+
+def near_balance(acct):
+    """Account balance in NEAR, or None."""
+    try:
+        req = urllib.request.Request(RPC, data=json.dumps({
+            "jsonrpc": "2.0", "id": 1, "method": "query",
+            "params": {"request_type": "view_account", "finality": "final",
+                       "account_id": acct}}).encode(), headers={"Content-Type": "application/json"})
+        return int(json.load(urllib.request.urlopen(req, timeout=30))["result"]["amount"]) / 1e24
+    except Exception:
+        return None
+
+
+def require_funds(acct, min_near, role):
+    """Fail early and clearly — a dry account otherwise causes a confusing cascade."""
+    b = near_balance(acct)
+    if b is None or b < min_near:
+        print(f"  [ABORT] {role} {acct} has {b} NEAR; this test escrows several 1 NEAR "
+              f"deals and needs >= {min_near}.\n"
+              f"          Fund it: near send-near <funded-acct> {acct} 10 --networkId testnet")
+        sys.exit(2)
+    return b
 
 
 def chk(name, cond, detail=""):
@@ -86,6 +111,7 @@ def poll(method, args, want, timeout=25):
 
 def main():
     print("S4 spike — file escrow by sha256 identity (testnet)")
+    require_funds(BUYER, 5.0, "buyer/escrow account")
     # two real files: A, and B = A with ONE byte changed
     A = bytes(range(256)) * 8 + b"NEAR hackathon deliverable v1\n"      # 2061 bytes, non-UTF8-safe
     B = bytearray(A)

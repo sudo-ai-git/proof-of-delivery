@@ -27,7 +27,11 @@ CONTRACT = "nft-repo-test-015.testnet"
 BUYER = "nft-repo-test-015.testnet"
 SELLER = "nft-repo-loop4.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
+# The JS near-cli defaults to the DEPRECATED rpc.testnet.near.org, which 429s
+# intermittently and made these runs flaky. Point it at a working node.
+ENV = dict(os.environ,
+           NEAR_TESTNET_RPC=os.environ.get("NEAR_TESTNET_RPC", "https://rpc.testnet.fastnear.com"),
+           PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
            + os.pathsep + os.environ.get("PATH", ""))
 
 FAILS = []
@@ -101,6 +105,13 @@ def balance(acct):
 
 def main():
     print("S2 spike — Proof-of-Delivery escrow round trip (testnet, strict)")
+    _b = balance(BUYER)
+    if _b is None or _b / 1e24 < 6.0:
+        print(f"  [ABORT] buyer/escrow {BUYER} has "
+              f"{None if _b is None else round(_b/1e24, 3)} NEAR; this test escrows "
+              f"2 + 1 + 1 NEAR and needs >= 6.\n"
+              f"          Fund it: near send-near <funded-acct> {BUYER} 10 --networkId testnet")
+        return 2
     payload = "market report #42: NEAR Intents volume up 18% w/w"
     want = V.commit(payload)
     print(f"  predicate (expected commitment) = {want}")

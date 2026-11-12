@@ -157,7 +157,16 @@ CLI for testnet, and `python3`. No API keys, no secrets.
 ```bash
 npm install                       # near-sdk-as@3.2.3 + asbuild (provides `asb`)
 export PATH="$PWD/node_modules/.bin:$PATH"
+
+# The JS near-cli defaults to the DEPRECATED rpc.testnet.near.org, which 429s
+# intermittently and makes test runs flaky. Point it at a working node:
+export NEAR_TESTNET_RPC=https://rpc.testnet.fastnear.com
 ```
+
+The three `spike_s*.py` scripts send real transactions, so they need a funded
+testnet account (they escrow 2–4 NEAR in total and check the balance up front
+with a clear message if it is too low). `verify_all.py`, `verifier.py` and
+`demo/index.html` need no funds at all — `verify_all.py` only reads the chain.
 
 **Start here — one command runs every gate** (offline + live parity):
 

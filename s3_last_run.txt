@@ -3,12 +3,12 @@ S3 spike — NEP-141 escrow round trip (wNEAR on testnet, strict)
   [PASS] register nft-repo-test-014.testnet on wrap.testnet storage={'total': '1250000000000000000000', 'available': '0'}
   [PASS] register nft-repo-test-015.testnet on wrap.testnet storage={'total': '1250000000000000000000', 'available': '0'}
   [PASS] register nft-repo-loop4.testnet on wrap.testnet storage={'total': '1250000000000000000000', 'available': '0'}
-  [PASS] buyer wrapped NEAR -> wNEAR 2000000000000000000000000 -> 3000000000000000000000000
-  [PASS] ft_transfer_call creates the deal r more info: https://testnet.nearblocks.io/txns/HmXhLXPAXYFzhjjUDxuRrdfNvJroG88fd2igXTkei3g5 '500000000000000000000000' 
+  [PASS] buyer wrapped NEAR -> wNEAR 3000000000000000000000000 -> 4000000000000000000000000
+  [PASS] ft_transfer_call creates the deal r more info: https://testnet.nearblocks.io/txns/FHZvG4VXjwfhXBbE2hxyyvwE8FKHmCJVtC7LRHJzBJp4 '500000000000000000000000' 
   [PASS] deal persisted with token + amount got={"token":"wrap.testnet","buyer":"nft-repo-test-014.testnet","seller":"nft-repo-loop4.testnet","amount":"500000
-  [PASS] seller delivered r for more info: https://testnet.nearblocks.io/txns/ArGfewebuUriV3BopzcqMJQZdxUqTtnzP9hMJETv65RW '' 
+  [PASS] seller delivered r for more info: https://testnet.nearblocks.io/txns/8rKxc9ykok5rD78Tm8AtZvcxGfR5Lh7p81BLWKhene1P '' 
   [PASS] delivery_ok -> true got=True
-  [PASS] release calls token.ft_transfer uNj Open the explorer for more info: https://testnet.nearblocks.io/txns/2gfkaT76MkjLurJey6SixDzpYyRRhZXGK2VmMDQmBuNj '' 
+  [PASS] release calls token.ft_transfer YiC Open the explorer for more info: https://testnet.nearblocks.io/txns/84PttPQm2DVfTwFnKhQYnkbkJYoetjya4qSyWJ6oNYiC '' 
   [PASS] seller wNEAR grew by the escrowed amount delta=500000000000000000000000 (want 500000000000000000000000)
 
 VERDICT: VALIDATED — the escrow holds a NEP-141 token across a cross-contract ft_transfer_call/ft_on_transfer and releases it to the seller via token.ft_transfer; the seller's wNEAR balance grew by exactly the escrowed amount.

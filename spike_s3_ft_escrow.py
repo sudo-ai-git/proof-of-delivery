@@ -26,7 +26,11 @@ BUYER = "nft-repo-test-014.testnet"   # must differ from ESCROW: FTs reject self
 SELLER = "nft-repo-loop4.testnet"
 FT = "wrap.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
+# The JS near-cli defaults to the DEPRECATED rpc.testnet.near.org, which 429s
+# intermittently and made these runs flaky. Point it at a working node.
+ENV = dict(os.environ,
+           NEAR_TESTNET_RPC=os.environ.get("NEAR_TESTNET_RPC", "https://rpc.testnet.fastnear.com"),
+           PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
            + os.pathsep + os.environ.get("PATH", ""))
 ONE = 10 ** 24
 AMOUNT = str(ONE // 2)  # 0.5 wNEAR
@@ -127,7 +131,11 @@ def main():
     ok, d = run_tx(FT, "ft_transfer_call",
                    {"receiver_id": ESCROW, "amount": AMOUNT, "msg": msg}, BUYER, yocto=1)
     chk("ft_transfer_call creates the deal", ok, d[-120:])
+    end = time.time() + 25
     j = view(ESCROW, "get_deal", {"deal_id": deal})
+    while time.time() < end and not (isinstance(j, str) and f'"token":"{FT}"' in j):
+        time.sleep(1.5)
+        j = view(ESCROW, "get_deal", {"deal_id": deal})
     persisted = isinstance(j, str) and f'"token":"{FT}"' in j and f'"amount":"{AMOUNT}"' in j
     chk("deal persisted with token + amount", persisted, f"got={str(j)[:110]}")
 
