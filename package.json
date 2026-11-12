@@ -7,7 +7,7 @@
     "build": "asb assembly/index.ts --target release",
     "verify": "python3 verify_all.py --selftest"
   },
-  "devDependencies": {
+  "dependencies": {
     "assemblyscript": "0.18.32",
     "asbuild": "^0.2.0",
     "near-mock-vm": "3.2.2",
