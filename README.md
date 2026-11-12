@@ -55,6 +55,20 @@ is met — the programmable-money primitive the track asks for.
 
 **Prereq:** `near` CLI (testnet), `asb`, `python3`. No API keys, no secrets.
 
+**Start here — one command runs every gate** (offline + live parity):
+
+```bash
+python3 verify_all.py --build --selftest
+#   -> [PASS] G1 build (22,844 bytes, key exports present)
+#      [PASS] G2 golden vectors           (Python matches values the CONTRACT produced)
+#      [PASS] G3 tamper breaks >=3 layers
+#      [PASS] G4 live contract == Python
+#      [PASS]   selftest: G2 rejects a deliberately wrong golden vector
+#      RESULT: ALL GATES PASS (4/4)
+```
+
+Then the individual steps:
+
 ```bash
 export PATH="<repo>/node_modules/.bin:$HOME/.npm-global/bin:$PATH"
 
@@ -110,6 +124,7 @@ See [`SPIKE_RESULTS.md`](SPIKE_RESULTS.md) — every number is execution-measure
 ```
 assembly/index.ts        the contract (escrow + the commitment primitive)
 verifier.py              independent Python reference for the commitment
+verify_all.py            one-shot: build + golden + tamper + live-parity gates
 demo/index.html          self-contained interactive demo (JS, no chain needed)
 spike_s2_escrow.py       native-NEAR escrow round-trip test on testnet
 spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
