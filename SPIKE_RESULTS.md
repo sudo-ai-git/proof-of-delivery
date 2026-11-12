@@ -10,7 +10,7 @@ All results below are **measured by execution** against NEAR testnet
 | Toolchain | `near-sdk-as@3.2.3` + `asbuild` (AssemblyScript) |
 | Build artifact | `build/release/proof-of-delivery.wasm` — **21,568 B** |
 | Deployed | `nft-repo-test-015.testnet`, tx `4rpJCFKG…`, re-deployed several times during spikes |
-| Exports | `commitment, check, mismatch_count, version, create_deal, deliver, delivery_ok, release, refund, get_deal` |
+| Exports | `commitment, check, mismatch_count, version, create_deal, deliver, delivery_ok, release, refund, get_deal, ft_on_transfer` |
 
 ### Three bugs found and fixed by the spikes (each was a real blocker)
 
@@ -58,6 +58,43 @@ exact same commitment in Python from the README and match the chain.
 VERDICT: VALIDATED — 11/11 steps, strict checks, real funds moved,
 reverts enforced on both failure paths.
 ```
+
+## S3 — NEP-141 (stablecoin) escrow, on the canonical `wrap.testnet`
+
+| Step | Result |
+|---|---|
+| register buyer / escrow / seller on the FT | PASS |
+| buyer wraps NEAR → wNEAR | PASS (`1e24 → 2e24`) |
+| `ft_transfer_call` creates the deal in `ft_on_transfer` | PASS |
+| deal persisted with `"token":"wrap.testnet"` + amount | PASS |
+| seller delivered | PASS |
+| `delivery_ok` → `true` | PASS |
+| `release` calls the token's `ft_transfer` | PASS |
+| seller's wNEAR balance | **+500000000000000000000000 exactly** (the escrowed amount) |
+
+```
+VERDICT: VALIDATED — 10/10 steps.
+```
+
+Bugs the FT path surfaced (both real, both fixed):
+- The FT **rejects self-transfers** (`Sender and receiver should be different`),
+  so the buyer account must differ from the escrow contract account.
+- The JSON scanners required `"key":"value"` with **no whitespace**; a producer
+  emitting `"key": "value"` broke `ft_on_transfer`'s `msg` parse. Now
+  whitespace-tolerant and accepts quoted numbers.
+
+## Cross-environment parity — THREE independent implementations
+
+The same payload yields the same commitment from three independent code paths:
+
+| Source | `commitment("the quick brown fox")` |
+|---|---|
+| on-chain contract (`near view … commitment`) | `338f85c2-a6-3d-09` |
+| `verifier.py` (Python) | `338f85c2-a6-3d-09` |
+| `demo/index.html` (JavaScript, no chain) | `338f85c2-a6-3d-09` |
+
+**Three-way parity: true.** A judge can verify the predicate without trusting
+any of our code.
 
 ## Reproduce
 

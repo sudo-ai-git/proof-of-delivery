@@ -10,12 +10,12 @@ referee. This contract removes the referee.
 
 ## What it is
 
-A **Proof-of-Delivery escrow**: a buyer locks NEAR in a deal with a
-machine-checkable release predicate. The seller delivers an artifact. **Any**
-caller can then trigger `release()`, and funds move to the seller *iff* the
-delivered artifact satisfies the buyer's predicate — checked deterministically
-**on chain**. If the deadline passes with no satisfying delivery, the buyer is
-refunded.
+A **Proof-of-Delivery escrow**: a buyer locks funds — **native NEAR or any
+NEP-141 stablecoin** — in a deal with a machine-checkable release predicate.
+The seller delivers an artifact. **Any** caller can then trigger `release()`,
+and the funds move to the seller *iff* the delivered artifact satisfies the
+buyer's predicate — checked deterministically **on chain**. If the deadline
+passes with no satisfying delivery, the buyer is refunded.
 
 The predicate is a **4-layer tamper-evident commitment** computed from pure
 integer math (no host functions), so it is reproducible byte-for-byte off-chain
@@ -32,6 +32,16 @@ commitment(payload) = "fnv8-sum2-lin2-odd2"
 A single-character change to the artifact breaks **≥3 of the 4 layers**, so a
 tampered delivery cannot satisfy the predicate. `mismatch_count()` reports
 *which* layers disagree, not just pass/fail.
+
+**Three independent implementations agree byte-for-byte** — the on-chain
+AssemblyScript contract, `verifier.py`, and the JS in `demo/index.html`
+(verified: on-chain == Python == JS for the same payloads).
+
+## Try the predicate with no chain at all
+
+Open `demo/index.html` in a browser: type a deliverable, watch the 4 layers
+recompute live, press **Change one character** and see ≥3 layers flip to
+BROKEN. No server, no wallet, no account.
 
 ## NEAR's role (concrete)
 
@@ -69,8 +79,13 @@ near view <your-account>.testnet mismatch_count \
 
 # 4. The full escrow round trip, asserted end to end (~90s):
 python3 spike_s2_escrow.py
-#   -> 11/11 PASS: fund, deliver, predicate check, release pays the seller,
+#   -> 11/11 PASS: fund NEAR, deliver, predicate check, release pays the seller,
 #      mismatched delivery is rejected, refund after deadline. Real funds move.
+
+# 5. Stablecoins: the same escrow holding a NEP-141 (wNEAR on testnet):
+python3 spike_s3_ft_escrow.py
+#   -> 10/10 PASS: ft_transfer_call creates the deal, release calls the token's
+#      ft_transfer, and the seller's wNEAR grows by exactly the escrowed amount.
 ```
 
 ## Why it is different
@@ -95,8 +110,11 @@ See [`SPIKE_RESULTS.md`](SPIKE_RESULTS.md) — every number is execution-measure
 ```
 assembly/index.ts        the contract (escrow + the commitment primitive)
 verifier.py              independent Python reference for the commitment
-spike_s2_escrow.py       end-to-end escrow round-trip test on testnet
-SPIKE_RESULTS.md         measured results + the 3 bugs the spikes caught
+demo/index.html          self-contained interactive demo (JS, no chain needed)
+spike_s2_escrow.py       native-NEAR escrow round-trip test on testnet
+spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
+SPIKE_RESULTS.md         measured results + the bugs the spikes caught
+X_POST_DRAFT.md          demo post + video shot list
 ```
 
 ## License
