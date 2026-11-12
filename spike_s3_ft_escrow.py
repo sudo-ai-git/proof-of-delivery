@@ -21,11 +21,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import verifier as V
 
 NET = "testnet"
-ESCROW = "nft-repo-test-015.testnet"
-BUYER = "nft-repo-test-014.testnet"   # must differ from ESCROW: FTs reject self-transfers
-SELLER = "nft-repo-loop4.testnet"
-FT = "wrap.testnet"
-RPC = "https://rpc.testnet.fastnear.com"
+# Overridable so a judge can point the suite at their own accounts:
+#   POD_ESCROW / POD_BUYER / POD_SELLER / POD_FT / POD_RPC
+ESCROW = os.environ.get("POD_ESCROW", "nft-repo-test-015.testnet")
+BUYER = os.environ.get("POD_BUYER", "nft-repo-test-014.testnet")  # must differ from ESCROW: FTs reject self-transfers
+SELLER = os.environ.get("POD_SELLER", "nft-repo-loop4.testnet")
+FT = os.environ.get("POD_FT", "wrap.testnet")
+RPC = os.environ.get("POD_RPC", "https://rpc.testnet.fastnear.com")
+
+
+def require_key(acct):
+    """Without local credentials the `near` CLI HANGS on an interactive prompt."""
+    pats = [os.path.expanduser(f"~/.near-credentials/{NET}/{acct}.json"),
+            os.path.expanduser(f"~/.near-credentials/{NET}/{acct}")]
+    if not any(os.path.exists(p) for p in pats):
+        print(f"  [ABORT] no local NEAR credentials for {acct}.\n"
+              f"          Create/import one under ~/.near-credentials/{NET}/, or set\n"
+              f"          POD_ESCROW / POD_BUYER / POD_SELLER to accounts you control.")
+        sys.exit(2)
 # The JS near-cli defaults to the DEPRECATED rpc.testnet.near.org, which 429s
 # intermittently and made these runs flaky. Point it at a working node.
 ENV = dict(os.environ,
@@ -51,7 +64,10 @@ def run_tx(contract, method, args, signer, deposit=None, yocto=None, gas=100_000
         cmd += ["--deposit", str(deposit)]
     if yocto:
         cmd += ["--depositYocto", str(yocto)]
-    p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=180)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=90)
+    except subprocess.TimeoutExpired:
+        return False, "TIMEOUT: the near CLI did not return within 90s (RPC stall?)"
     out = (p.stdout or "") + (p.stderr or "")
     flat = out.replace("\n", " ")
     bad = ("Failure" in out) or ("panicked" in flat) or ("does not satisfy" in flat) or \
@@ -106,6 +122,9 @@ def wait_wnear(acct, pred, timeout=30):
 
 def main():
     print("S3 spike — NEP-141 escrow round trip (wNEAR on testnet, strict)")
+    require_key(BUYER)
+    require_key(SELLER)
+    require_key(ESCROW)
     payload = "agent deliverable: dataset v7 (sha in commitment)"
     want = V.commit(payload)
     print(f"  predicate = {want}")

@@ -8,7 +8,7 @@ All results below are **measured by execution** against NEAR testnet
 | Fact | Value |
 |---|---|
 | Toolchain | `near-sdk-as@3.2.3` + `asbuild` (AssemblyScript) |
-| Build artifact | `build/release/proof-of-delivery.wasm` — **32,828 B** (`version() == "pod-3"`) |
+| Build artifact | `build/release/proof-of-delivery.wasm` — **33,006 B** (`version() == "pod-4"`), committed so the code_hash is offline-checkable |
 | Deployed | `nft-repo-test-015.testnet`, tx `4rpJCFKG…`, re-deployed several times during spikes |
 | Exports | `version, commitment, check, mismatch_count, sha256_of, create_deal, create_deal_sha, deliver, deliver_bytes, delivery_ok, release, refund, get_deal, ft_on_transfer` |
 
@@ -154,6 +154,42 @@ Contract `nft-repo-test-015.testnet`, code_hash `5khSThuj3AYV6dyZeUbzDprKQfY2xSp
 | S4 release (correct file) | `4Ku5QTBJadTypo44rsmsCHXbAi3ez8cKevw2csvEvJFU` |
 | S4 substituted file delivered | `EqSxt4eL6UEPTz3Te5FGBYdFMTRSPRbfPQ4AFh5nPmKW` |
 | **S4 release on substituted file → FAILURE** | `Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1` |
+
+## S5 — the settlement guard (a real vulnerability, found then fixed)
+
+An independent security review of `pod-3` flagged that `release()`/`refund()` had
+no idempotency guard. It was right, and none of the suites above caught it
+because they only tested happy paths and predicate reverts — never the settlement
+state machine.
+
+**Reproduced on chain before the fix: one 1-NEAR deal paid out 2.2007 NEAR.**
+`release()` could be called repeatedly (anyone could drain the contract), and
+`release()` followed by `refund()` paid both sides.
+
+Fix (`pod-4`), two independent barriers:
+1. `assert(!boolField(deal, "released"), "deal already settled")` in `release()` and `refund()`;
+2. the commitment slot is cleared on payout (a bypassed flag then hits `nothing delivered`).
+
+Regression test `spike_s5_settlement_guard.py` — asserts the negative cases:
+
+| step | result |
+|---|---|
+| first `release` pays the seller | PASS (+0.9998 NEAR) |
+| second `release` REVERTS `deal already settled` | PASS |
+| the rejected call moves **no** money | PASS (delta +0.0000 NEAR) |
+| `release` on a second deal still succeeds | PASS |
+| `refund` AFTER `release` REVERTS | PASS |
+| a fresh deal is still releasable | PASS |
+| settled deal shows `released:true` and a cleared slot | PASS |
+
+```
+VERDICT: VALIDATED — 7/7
+```
+
+Harness fixes made alongside it (each one was a real failure mode):
+- the `near` CLI **hangs** without local credentials — now a clear exit-2 abort;
+- a stalled RPC used to crash the run with a traceback — now a reported `TIMEOUT`;
+- accounts are overridable (`POD_ESCROW`/`POD_BUYER`/`POD_SELLER`/`POD_CONTRACT`/`POD_RPC`).
 
 ## Reproduce
 

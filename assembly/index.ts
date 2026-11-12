@@ -228,6 +228,15 @@ function numField(json: string, key: string): u64 {
   return v;
 }
 
+// Read a JSON boolean (unquoted true/false).
+function boolField(json: string, key: string): bool {
+  const i = valueStart(json, key);
+  if (i < 0) {
+    return false;
+  }
+  return json.substring(i, i + 4) == "true";
+}
+
 function dealJson(
   token: string, buyer: string, seller: string, amount: string, predicate: string,
   commitment: string, deadline: u64, released: bool,
@@ -252,7 +261,7 @@ function payout(token: string, to: string, amount: string): void {
 
 // ── the verified primitive (public, so a judge can call it directly) ────────
 export function version(): string {
-  return "pod-3";   // pod-3 adds sha256 file identity: create_deal_sha, deliver_bytes, sha256_of
+  return "pod-4";   // pod-4 fixes a double-payout: release/refund were re-callable
 }
 
 export function commitment(payload: string): string {
@@ -353,12 +362,13 @@ export function delivery_ok(deal_id: string): bool {
 export function release(deal_id: string): void {
   assert(deals.contains(deal_id), "no deal");
   const j = <string>deals.get(deal_id, "");
+  assert(!boolField(j, "released"), "deal already settled");
   assert(field(j, "commitment").length > 0, "nothing delivered");
   assert(digestMatches(field(j, "commitment"), field(j, "predicate")),
     "delivery does not satisfy the predicate");
   deals.set(deal_id, dealJson(
     field(j, "token"), field(j, "buyer"), field(j, "seller"), field(j, "amount"),
-    field(j, "predicate"), field(j, "commitment"), numField(j, "deadline"), true,
+    field(j, "predicate"), "", numField(j, "deadline"), true,
   ));
   payout(field(j, "token"), field(j, "seller"), field(j, "amount"));
   logging.log("released " + deal_id + " to " + field(j, "seller"));
@@ -368,11 +378,12 @@ export function refund(deal_id: string): void {
   assert(deals.contains(deal_id), "no deal");
   const j = <string>deals.get(deal_id, "");
   assert(field(j, "buyer") == Context.sender, "only the buyer refunds");
+  assert(!boolField(j, "released"), "deal already settled");
   const dl = numField(j, "deadline");
   assert(!(dl == 0) && Context.blockTimestamp >= dl, "deadline not reached");
   deals.set(deal_id, dealJson(
     field(j, "token"), field(j, "buyer"), field(j, "seller"), field(j, "amount"),
-    field(j, "predicate"), field(j, "commitment"), dl, true,
+    field(j, "predicate"), "", dl, true,
   ));
   payout(field(j, "token"), field(j, "buyer"), field(j, "amount"));
   logging.log("refunded " + deal_id + " to " + field(j, "buyer"));

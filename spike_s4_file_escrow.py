@@ -20,10 +20,23 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 NET = "testnet"
-ESCROW = "nft-repo-test-015.testnet"
-BUYER = "nft-repo-test-015.testnet"
-SELLER = "nft-repo-loop4.testnet"
-RPC = "https://rpc.testnet.fastnear.com"
+# Overridable so a judge can point the suite at their own accounts:
+#   POD_ESCROW / POD_BUYER / POD_SELLER / POD_RPC
+ESCROW = os.environ.get("POD_ESCROW", "nft-repo-test-015.testnet")
+BUYER = os.environ.get("POD_BUYER", ESCROW)
+SELLER = os.environ.get("POD_SELLER", "nft-repo-loop4.testnet")
+RPC = os.environ.get("POD_RPC", "https://rpc.testnet.fastnear.com")
+
+
+def require_key(acct):
+    """Without local credentials the `near` CLI HANGS on an interactive prompt."""
+    pats = [os.path.expanduser(f"~/.near-credentials/{NET}/{acct}.json"),
+            os.path.expanduser(f"~/.near-credentials/{NET}/{acct}")]
+    if not any(os.path.exists(p) for p in pats):
+        print(f"  [ABORT] no local NEAR credentials for {acct}.\n"
+              f"          Create/import one under ~/.near-credentials/{NET}/, or set\n"
+              f"          POD_ESCROW / POD_BUYER / POD_SELLER to accounts you control.")
+        sys.exit(2)
 ENV = dict(os.environ,
            NEAR_TESTNET_RPC=os.environ.get("NEAR_TESTNET_RPC", "https://rpc.testnet.fastnear.com"),
            PATH=os.path.join(HERE, "node_modules", ".bin") + os.pathsep + os.environ.get("PATH", ""))
@@ -65,7 +78,10 @@ def run_tx(method, args, signer, deposit=None, gas=200_000_000_000_000):
            "--gas", str(gas), "--networkId", NET]
     if deposit:
         cmd += ["--deposit", str(deposit)]
-    p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=180)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=90)
+    except subprocess.TimeoutExpired:
+        return False, "TIMEOUT: the near CLI did not return within 90s (RPC stall?)"
     out = (p.stdout or "") + (p.stderr or "")
     flat = out.replace("\n", " ")
     bad = any(k in flat for k in ("Failure", "panicked", "does not satisfy", "no deal",
@@ -111,6 +127,8 @@ def poll(method, args, want, timeout=25):
 
 def main():
     print("S4 spike — file escrow by sha256 identity (testnet)")
+    require_key(BUYER)
+    require_key(SELLER)
     require_funds(BUYER, 5.0, "buyer/escrow account")
     # two real files: A, and B = A with ONE byte changed
     A = bytes(range(256)) * 8 + b"NEAR hackathon deliverable v1\n"      # 2061 bytes, non-UTF8-safe

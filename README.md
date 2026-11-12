@@ -94,11 +94,57 @@ transfer all live in the contract. No backend can switch the release rule off,
 and no arbiter is required. This is money that only moves when the *condition*
 is met — the programmable-money primitive the track asks for.
 
+## Security: a real bug we found and fixed
+
+`pod-3` shipped with a **double-payout vulnerability**, and our own 11/10/10
+"strict" suites did not catch it because they only tested the happy path and the
+predicate reverts — never the *settlement* state machine.
+
+`release()` wrote `released: true` but never **checked** it, and `refund()`
+ignored it entirely. Consequences:
+
+- `release()` could be called repeatedly — anyone could drain the contract.
+- `release()` then (after the deadline) `refund()` paid the seller **and** the buyer.
+
+Reproduced on chain before fixing: **one 1-NEAR deal paid out 2.2007 NEAR.**
+
+The fix (commit history: `pod-4`) is two independent barriers:
+
+1. `assert(!boolField(deal, "released"), "deal already settled")` in both
+   `release()` and `refund()`;
+2. the commitment slot is **cleared** on payout, so even a bypassed flag would
+   hit `nothing delivered`.
+
+Pinned by `spike_s5_settlement_guard.py`, which asserts the *negative* cases:
+
+```
+[PASS] first release pays the seller +0.9998 NEAR
+[PASS] second release REVERTS (deal already settled)
+[PASS] rejected call pays nothing            delta = +0.0000 NEAR
+[PASS] release on the second deal succeeds
+[PASS] refund AFTER release REVERTS (no double payout)
+[PASS] a fresh deal is still releasable
+[PASS] settled deal is marked released and its slot cleared
+VERDICT: VALIDATED
+```
+
+A security track that only shows green happy-path tests is showing nothing. This
+section, the repro numbers, and the regression test are the evidence that the
+state machine was actually attacked.
+
+
+
 ## Verified on NEAR testnet — every transaction
 
-Contract: **`nft-repo-test-015.testnet`** · code_hash **`5khSThuj3AYV6dyZeUbzDprKQfY2xSpFJAtBhDNNKMC8`**
-— which is the sha256 of this repo's `build/release/proof-of-delivery.wasm`, so the
-deployed code is byte-identical to what you can build here.
+Contract: **`nft-repo-test-015.testnet`** · code_hash **`DrbYEqynJEg3PSDuvCzAgWeFWofHxn4nPrCV44xMtLwq`**
+— which is the sha256 of the committed `build/release/proof-of-delivery.wasm`, so
+the deployed code is byte-identical to what you can build here. The wasm is
+committed precisely so this check is possible offline:
+
+```bash
+python3 -c "import hashlib,base64;w=open('build/release/proof-of-delivery.wasm','rb').read();print(len(w),'bytes');print(base64.b64encode(hashlib.sha256(w).digest()))"
+# 33006 bytes -> the base58 form of that sha256 is the code_hash above
+```
 
 Explorer links (`https://testnet.nearblocks.io/txns/<hash>`). Every one of these
 was re-queried against the RPC and resolves; the last row is a **failure**, by
@@ -172,7 +218,7 @@ with a clear message if it is too low). `verify_all.py`, `verifier.py` and
 
 ```bash
 python3 verify_all.py --build --selftest
-#   -> [PASS] G1 build (32,828 bytes, key exports present)
+#   -> [PASS] G1 build (33,006 bytes, key exports present)
 #      [PASS] G2 golden vectors           (Python matches values the CONTRACT produced)
 #      [PASS] G3 tamper breaks >=3 layers
 #      [PASS] G4 live contract == Python
@@ -218,7 +264,25 @@ python3 spike_s4_file_escrow.py
 #   -> 10/10 PASS: a 2,078-byte binary file is escrowed by its sha256 and
 #      released; a file differing by ONE BYTE is rejected on chain.
 sha256sum asset_A.bin        # matches the hash the contract stored
+
+# 7. The settlement state machine (the negative cases the other suites missed):
+python3 spike_s5_settlement_guard.py
+#   -> 7/7 PASS: repeat release and release-then-refund both revert
+#      'deal already settled'; the honest path still pays exactly once.
 ```
+
+The on-chain spikes take time and funds. They accept overrides so you can run
+them against accounts you control (this is the difference between "read the logs"
+and "reproduce it yourself"):
+
+```bash
+POD_ESCROW=<your-contract>.testnet POD_BUYER=<your-acct>.testnet \
+POD_SELLER=<your-seller>.testnet python3 spike_s2_escrow.py
+```
+
+If a key is missing they **abort with a clear message** (exit 2) rather than
+blocking on an interactive `near` prompt, and a stalled RPC is reported as a
+`TIMEOUT` line instead of crashing the run.
 
 ## Why it is different
 
@@ -247,6 +311,9 @@ demo/index.html          self-contained interactive demo (JS, no chain needed)
 spike_s2_escrow.py       native-NEAR escrow round-trip test on testnet
 spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
 spike_s4_file_escrow.py  real FILE escrow by sha256, incl. a 1-byte substitution
+spike_s5_settlement_guard.py  settlement state machine: repeat release/refund are rejected
+exploit_repro_pod3.txt   the measured double-payout output that motivated pod-4
+build/release/proof-of-delivery.wasm  committed so code_hash == sha256(wasm) is offline-checkable
 asset_A.bin, asset_B.bin the two test files (differ by one byte)
 SPIKE_RESULTS.md         measured results + the bugs the spikes caught
 X_POST_DRAFT.md          demo post + video shot list

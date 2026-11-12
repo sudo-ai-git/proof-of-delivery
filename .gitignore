@@ -1,8 +1,11 @@
 node_modules
 node_modules/
-build/
-*.wasm
 __pycache__/
 *.pyc
 .env
 .near-credentials/
+# build/ is a local artifact dir, EXCEPT the shipped release wasm — committing it
+# lets anyone verify offline that code_hash == sha256(wasm).
+build/*
+!build/release/
+!build/release/proof-of-delivery.wasm

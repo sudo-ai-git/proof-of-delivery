@@ -23,10 +23,25 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import verifier as V
 
 NET = "testnet"
-CONTRACT = "nft-repo-test-015.testnet"
-BUYER = "nft-repo-test-015.testnet"
-SELLER = "nft-repo-loop4.testnet"
-RPC = "https://rpc.testnet.fastnear.com"
+# Overridable so a judge can point the suite at their own accounts:
+#   POD_CONTRACT / POD_BUYER / POD_SELLER / POD_RPC
+CONTRACT = os.environ.get("POD_CONTRACT", "nft-repo-test-015.testnet")
+BUYER = os.environ.get("POD_BUYER", CONTRACT)
+SELLER = os.environ.get("POD_SELLER", "nft-repo-loop4.testnet")
+RPC = os.environ.get("POD_RPC", "https://rpc.testnet.fastnear.com")
+
+
+def require_key(acct):
+    """Without local credentials the `near` CLI HANGS on an interactive prompt."""
+    import glob
+    pats = [os.path.expanduser(f"~/.near-credentials/{NET}/{acct}.json"),
+            os.path.expanduser(f"~/.near-credentials/{NET}/{acct}")]
+    if not any(os.path.exists(p) for p in pats):
+        print(f"  [ABORT] no local NEAR credentials for {acct}.\n"
+              f"          Create/import one under ~/.near-credentials/{NET}/, or point the\n"
+              f"          suite at accounts you control: POD_CONTRACT / POD_BUYER / POD_SELLER.\n"
+              f"          (The near CLI would otherwise block on an interactive prompt.)")
+        sys.exit(2)
 # The JS near-cli defaults to the DEPRECATED rpc.testnet.near.org, which 429s
 # intermittently and made these runs flaky. Point it at a working node.
 ENV = dict(os.environ,
@@ -49,7 +64,10 @@ def run_tx(method, args, signer, deposit=None, gas=300_000_000_000_000):
            "--accountId", signer, "--gas", str(gas), "--networkId", NET]
     if deposit:
         cmd += ["--deposit", str(deposit)]
-    p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=180)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, timeout=90)
+    except subprocess.TimeoutExpired:
+        return False, "TIMEOUT: the near CLI did not return within 90s (RPC stall?)"
     out = (p.stdout or "") + (p.stderr or "")
     flat = out.replace("\n", " ")
     reverted = ("Failure" in out) or ("panicked" in flat) or ("does not satisfy" in flat) \
@@ -105,6 +123,8 @@ def balance(acct):
 
 def main():
     print("S2 spike — Proof-of-Delivery escrow round trip (testnet, strict)")
+    require_key(BUYER)
+    require_key(SELLER)
     _b = balance(BUYER)
     if _b is None or _b / 1e24 < 6.0:
         print(f"  [ABORT] buyer/escrow {BUYER} has "
