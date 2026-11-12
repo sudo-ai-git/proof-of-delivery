@@ -1,0 +1,9 @@
+{
+  "name": "proof-of-delivery",
+  "version": "1.0.0",
+  "description": "Proof-of-Delivery escrow: release funds only when a machine-verifiable predicate on the delivered artifact holds.",
+  "scripts": {
+    "build": "asb assembly/index.ts --target release",
+    "test": "asp --verbose"
+  }
+}

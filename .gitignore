@@ -1,0 +1,7 @@
+node_modules/
+build/
+*.wasm
+__pycache__/
+*.pyc
+.env
+.near-credentials/
