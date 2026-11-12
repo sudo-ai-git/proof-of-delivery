@@ -43,6 +43,49 @@ Open `demo/index.html` in a browser: type a deliverable, watch the 4 layers
 recompute live, press **Change one character** and see ≥3 layers flip to
 BROKEN. No server, no wallet, no account.
 
+## How a buyer knows it's the expected file
+
+The escrow does **not** discover what you wanted — it enforces payment only
+against a hash you fixed **before** funding. The artifact's identity must come
+from somewhere the buyer trusts *first*:
+
+| where the buyer gets the hash | example |
+|---|---|
+| the seller's listing / manifest (buy a specific artifact by its hash) | "dataset v7, sha256 = 3f9a…" |
+| a prior agreement on a shared spec, both sides hash it | a contract PDF, an API schema |
+| a third party's published checksum | a release page, an audited artifact |
+| a merkle root, for a set of files | a bundle, a directory tree |
+
+There are two predicate kinds, and the deal stores which one it uses:
+
+- **`sha256:<hex>` — real files.** The buyer calls `create_deal_sha(...)` with the
+  file's sha256. The seller delivers the bytes (`deliver_bytes` for binary, as
+  base64); the contract **decodes and hashes them itself**, so the seller cannot
+  fake delivery by asserting a digest.
+- **the 4-layer commitment — short payloads and tamper demos.** No prefix.
+
+> **Honest limit.** The 4-layer commitment carries only **~53 bits** of
+> information (32 + log₂231 + log₂231 + log₂37) and FNV-1a is not a
+> cryptographic hash. It is a *tamper-detection* primitive — good for showing
+> the enforcement mechanism and for detecting accidental corruption — and it
+> must **not** gate adversarial file substitution. Use the `sha256:` kind for
+> anything a counterparty could profit from swapping.
+
+**Verified end to end (spike S4, testnet):** a 2,078-byte binary file was
+escrowed by its sha256 and released; a second file differing by **one byte** was
+delivered instead and the release **reverted on chain**. `sha256_of()` on the
+contract matches `sha256sum` exactly.
+
+**Large files.** A contract call can only carry a few hundred KB, so inline
+delivery covers documents, datasets-in-a-call and small artifacts. For a large
+file the designed path (not yet built) is a **merkle root** over fixed-size
+chunks delivered across several calls, plus a **dispute window** after delivery
+during which the buyer can challenge — because a contract cannot fetch a URL, so
+"the bytes are retrievable *and* hashed to the commitment" has to be a windowed
+promise rather than an instant check.
+
+
+
 ## NEAR's role (concrete)
 
 NEAR holds the money and enforces the rule: escrow custody, the seller-only
@@ -65,7 +108,7 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 
 ```bash
 python3 verify_all.py --build --selftest
-#   -> [PASS] G1 build (22,844 bytes, key exports present)
+#   -> [PASS] G1 build (32,828 bytes, key exports present)
 #      [PASS] G2 golden vectors           (Python matches values the CONTRACT produced)
 #      [PASS] G3 tamper breaks >=3 layers
 #      [PASS] G4 live contract == Python
@@ -104,6 +147,13 @@ python3 spike_s2_escrow.py
 python3 spike_s3_ft_escrow.py
 #   -> 10/10 PASS: ft_transfer_call creates the deal, release calls the token's
 #      ft_transfer, and the seller's wNEAR grows by exactly the escrowed amount.
+
+# 6. A real FILE, identified by its sha256 (the answer to "how does the buyer
+#    know it's the expected file?"):
+python3 spike_s4_file_escrow.py
+#   -> 10/10 PASS: a 2,078-byte binary file is escrowed by its sha256 and
+#      released; a file differing by ONE BYTE is rejected on chain.
+sha256sum asset_A.bin        # matches the hash the contract stored
 ```
 
 ## Why it is different
@@ -132,6 +182,8 @@ verify_all.py            one-shot: build + golden + tamper + live-parity gates
 demo/index.html          self-contained interactive demo (JS, no chain needed)
 spike_s2_escrow.py       native-NEAR escrow round-trip test on testnet
 spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
+spike_s4_file_escrow.py  real FILE escrow by sha256, incl. a 1-byte substitution
+asset_A.bin, asset_B.bin the two test files (differ by one byte)
 SPIKE_RESULTS.md         measured results + the bugs the spikes caught
 X_POST_DRAFT.md          demo post + video shot list
 ```

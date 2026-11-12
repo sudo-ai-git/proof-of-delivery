@@ -8,9 +8,9 @@ All results below are **measured by execution** against NEAR testnet
 | Fact | Value |
 |---|---|
 | Toolchain | `near-sdk-as@3.2.3` + `asbuild` (AssemblyScript) |
-| Build artifact | `build/release/proof-of-delivery.wasm` — **22,844 B** (`version() == "pod-2"`) |
+| Build artifact | `build/release/proof-of-delivery.wasm` — **32,828 B** (`version() == "pod-3"`) |
 | Deployed | `nft-repo-test-015.testnet`, tx `4rpJCFKG…`, re-deployed several times during spikes |
-| Exports | `commitment, check, mismatch_count, version, create_deal, deliver, delivery_ok, release, refund, get_deal, ft_on_transfer` |
+| Exports | `version, commitment, check, mismatch_count, sha256_of, create_deal, create_deal_sha, deliver, deliver_bytes, delivery_ok, release, refund, get_deal, ft_on_transfer` |
 
 ### Three bugs found and fixed by the spikes (each was a real blocker)
 
@@ -95,6 +95,44 @@ The same payload yields the same commitment from three independent code paths:
 
 **Three-way parity: true.** A judge can verify the predicate without trusting
 any of our code.
+
+## S4 — escrow a REAL FILE by sha256 identity (binary-safe)
+
+| Step | Result |
+|---|---|
+| `sha256_of()` on the contract vs Python `hashlib` | **exact match** |
+| `create_deal_sha` (buyer commits the file's sha256) | PASS |
+| `deliver_bytes` with base64 of a **2,078-byte binary** file | PASS |
+| `delivery_ok` → `true` | PASS |
+| stored digest == `sha256sum asset_A.bin` | PASS |
+| `release` pays the seller | PASS |
+| second file, **one byte different**, delivered instead | tx succeeds (the delivery is honest) |
+| `delivery_ok` → `false` for the substituted file | PASS |
+| `release` **REJECTS** the substituted file | PASS (on-chain revert `delivery does not satisfy the predicate`) |
+| `create_deal_sha` rejects a malformed sha256 | PASS (`expected 64 hex chars of sha256`) |
+
+```
+VERDICT: VALIDATED — 10/10 steps.
+```
+
+`asset_A.bin` and `asset_B.bin` are committed, so a judge can run
+`sha256sum asset_A.bin` and compare it to the hash recorded in the run log.
+
+### Correction carried in this file
+
+An earlier note in this session quoted "74.3 bits" for the commitment. That
+number belongs to the *bucket signature* measured in a different suite, not to
+this predicate. **The 4-layer commitment carries ~52.9 bits**
+(32 + log₂231 + log₂231 + log₂37) and FNV-1a is non-cryptographic. It is a
+tamper-detection primitive; file identity uses the `sha256:` kind
+(256 bits). Recorded here so the wrong number does not propagate.
+
+Bugs the file path surfaced:
+- The 4-layer predicate re-used for file identity would have been **wrong**
+  (~53 bits, non-cryptographic) — hence the explicit `sha256:` kind.
+- A strict tx checker treated the substring `"deadline"` as a revert, but
+  near-cli **echoes the scheduled call's arguments**, so every `create_deal*`
+  was flagged. Match revert *phrases* (`deadline not reached`), never bare keys.
 
 ## Reproduce
 
