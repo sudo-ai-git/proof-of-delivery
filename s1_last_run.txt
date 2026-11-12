@@ -1,0 +1,7 @@
+S1 — commitment parity (N=20) + the S6 collision, on chain
+  [PASS] on-chain == Python for all 20 payloads 20/20
+  [PASS] JS (demo/index.html) == Python for all payloads 20/20
+  [PASS] the two colliding payloads differ but their on-chain commitment is identical a4445cec-26-a4-07 for '-EIL0OY-0P0DEDRV' and 'DE00I0YOD--LPVER'
+  [PASS] Python agrees with the chain on the collision 
+
+VERDICT: VALIDATED — 20/20 payloads agree across the live contract, the Python verifier and the browser JS; and the S6 collision is confirmed on chain (two different payloads, one commitment).

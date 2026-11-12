@@ -130,6 +130,31 @@ def g_parity():
                 "4 payloads" + (f", mismatches: {mism}" if mism else ""))
 
 
+def g_forgeable():
+    """Pin the KNOWN weakness so it cannot silently be claimed as strength.
+
+    L1/L2/L3 are invariant under permuting the payload, so the 4-layer checksum
+    collapses to a 32-bit FNV-1a birthday and a full collision is cheap. If this
+    gate ever FAILS, the primitive was changed and the README's demotion of it is
+    now wrong — fix the docs, do not "fix" the gate.
+    """
+    import random
+    base = "POD-DELIVERY-000"
+    rng = random.Random(1234)
+    seen = {}
+    buf = list(base)
+    for _ in range(300_000):
+        rng.shuffle(buf)
+        p = "".join(buf)
+        c = V.commit(p)
+        if c in seen and seen[c] != p:
+            return gate("G5 4-layer checksum is forgeable (permutation collision)", True,
+                        f"{seen[c]!r} vs {p!r} -> {c}")
+        seen[c] = p
+    return gate("G5 4-layer checksum is forgeable (permutation collision)", False,
+                "no collision in 300k permutations — the primitive changed; update the docs")
+
+
 def main():
     do_build = "--build" in sys.argv
     selftest = "--selftest" in sys.argv
@@ -138,6 +163,7 @@ def main():
     g_golden()
     g_tamper()
     g_parity()
+    g_forgeable()
 
     if selftest:
         print("\n  selftest — prove the gates can FAIL (not recorded in the result):")

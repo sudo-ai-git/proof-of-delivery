@@ -1,0 +1,12 @@
+Proof-of-Delivery — verify_all
+  [PASS] G1 build — 33006 bytes
+  [PASS] G2 golden vectors — 5 vectors
+  [PASS] G3 tamper breaks >=3 layers — min layers broken = 3 at ('the quick brown fox', 0)
+  [PASS] G4 live contract == Python — 4 payloads
+  [PASS] G5 4-layer checksum is forgeable (permutation collision) — 'LDEEP0RO0V-D0I-Y' vs 'D-DVPLROY0EE-I00' -> 2c21abda-26-a4-07
+
+  selftest — prove the gates can FAIL (not recorded in the result):
+  [PASS]   G2 rejects a deliberately wrong golden vector
+
+RESULT: ALL GATES PASS (5/5)
+The predicate is reproducible: on-chain, in Python, and in the browser demo.

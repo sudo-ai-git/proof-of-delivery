@@ -17,25 +17,57 @@ and the funds move to the seller *iff* the delivered artifact satisfies the
 buyer's predicate — checked deterministically **on chain**. If the deadline
 passes with no satisfying delivery, the buyer is refunded.
 
-The predicate is a **4-layer tamper-evident commitment** computed from pure
-integer math (no host functions), so it is reproducible byte-for-byte off-chain
-by anyone:
+The predicate has two kinds, and the deal records which one it uses.
+
+**`sha256:<hex>` — real artifacts (the one that matters).** The buyer commits the
+file's sha256; the seller delivers the bytes; the contract decodes and hashes them
+**itself**, so a seller cannot fake delivery by asserting a digest. 256-bit and
+adversarial-safe.
+
+**A 4-layer integer checksum — a reproducible tamper-detection demo.** Small,
+dependency-free, and what the browser demo mirrors. It is **not** a security
+primitive, and we measured exactly how weak it is:
 
 ```
 commitment(payload) = "fnv8-sum2-lin2-odd2"
-  L0  FNV-1a-32 over the low byte of each code unit
-  L1  sum(byte + index)   mod 231      (231-gate SUM channel)
-  L2  sum(byte*22 + index) mod 231     (231-gate LINEAR channel)
-  L3  count(odd bytes)   mod 37        (parity channel)
+  L0  FNV-1a-32 over the low byte of each code unit   <- the only layer that sees order
+  L1  sum(byte + index)     mod 231
+  L2  sum(byte*22 + index)  mod 231
+  L3  count(odd bytes)      mod 37
 ```
 
-A single-character change to the artifact breaks **≥3 of the 4 layers**, so a
-tampered delivery cannot satisfy the predicate. `mismatch_count()` reports
-*which* layers disagree, not just pass/fail.
+### Why the 4-layer checksum is a demo, not a guard (measured, not asserted)
 
-**Three independent implementations agree byte-for-byte** — the on-chain
-AssemblyScript contract, `verifier.py`, and the JS in `demo/index.html`
-(verified: on-chain == Python == JS for the same payloads).
+L1 and L2 are both determined by the *same* quantity:
+
+```
+L1 = sum(b_i) + n(n-1)/2        L2 = 22*sum(b_i) + n(n-1)/2
+```
+
+so together they carry no more than the byte sum, and — with L3, the odd-byte
+count — all three are **invariant under permuting the payload**. Only L0 sees byte
+order, and L0 is 32-bit non-cryptographic FNV-1a.
+
+So a **full 4-layer collision is a ~2^16 birthday over permutations**, not a 2^53
+search. `spike_s6_commitment_collision.py` finds one in **0.8 s / 37,417
+permutations**, and `spike_s1_commitment_parity.py` confirms it against the
+**live contract**:
+
+```
+payload A = '-EIL0OY-0P0DEDRV'
+payload B = 'DE00I0YOD--LPVER'
+commitment on both = a4445cec-26-a4-07
+```
+
+Two different payloads, one commitment, accepted by the deployed contract. Do not
+use this kind where a counterparty could profit from swapping the artifact — use
+`sha256:`. It remains genuinely useful for *detecting accidental corruption* and
+for demonstrating the enforcement mechanism, and a single-character edit still
+breaks ≥3 of the 4 layers (`mismatch_count()` reports which).
+
+**Three independent implementations agree byte-for-byte** — the live contract,
+`verifier.py`, and the JS in `demo/index.html`. Re-runnable:
+`python3 spike_s1_commitment_parity.py` → 20/20 three-way.
 
 ## Try the predicate with no chain at all
 
@@ -64,12 +96,13 @@ There are two predicate kinds, and the deal stores which one it uses:
   fake delivery by asserting a digest.
 - **the 4-layer commitment — short payloads and tamper demos.** No prefix.
 
-> **Honest limit.** The 4-layer commitment carries only **~53 bits** of
-> information (32 + log₂231 + log₂231 + log₂37) and FNV-1a is not a
-> cryptographic hash. It is a *tamper-detection* primitive — good for showing
-> the enforcement mechanism and for detecting accidental corruption — and it
-> must **not** gate adversarial file substitution. Use the `sha256:` kind for
-> anything a counterparty could profit from swapping.
+> **Honest limit — measured, not guessed.** The 4-layer commitment is not a
+> security primitive: L1/L2/L3 are invariant under permuting the payload, so its
+> collision resistance collapses to the 32-bit non-cryptographic FNV-1a and a
+> full collision takes ~2^16 permutations. We found one in **0.8 s** and
+> confirmed it on the live contract (`spike_s6_commitment_collision.py` /
+> `spike_s1_commitment_parity.py`). Use `sha256:` for anything a counterparty
+> could profit from swapping.
 
 **Verified end to end (spike S4, testnet):** a 2,078-byte binary file was
 escrowed by its sha256 and released; a second file differing by **one byte** was
@@ -222,8 +255,9 @@ python3 verify_all.py --build --selftest
 #      [PASS] G2 golden vectors           (Python matches values the CONTRACT produced)
 #      [PASS] G3 tamper breaks >=3 layers
 #      [PASS] G4 live contract == Python
+#      [PASS] G5 the 4-layer checksum IS forgeable (pins its known weakness)
 #      [PASS]   selftest: G2 rejects a deliberately wrong golden vector
-#      RESULT: ALL GATES PASS (4/4)
+#      RESULT: ALL GATES PASS (5/5)
 ```
 
 Then the individual steps:
@@ -269,6 +303,16 @@ sha256sum asset_A.bin        # matches the hash the contract stored
 python3 spike_s5_settlement_guard.py
 #   -> 7/7 PASS: repeat release and release-then-refund both revert
 #      'deal already settled'; the honest path still pays exactly once.
+
+# 8. Parity, re-runnable (this claim used to be a log line only):
+python3 spike_s1_commitment_parity.py
+#   -> 20/20 on-chain == Python == browser JS; and it confirms the collision
+#      below against the LIVE contract.
+
+# 9. How weak the 4-layer checksum actually is (offline, under a second):
+python3 spike_s6_commitment_collision.py
+#   -> finds a FULL 4-layer collision in ~37,417 permutations (0.8 s), because
+#      three of the four layers are invariant under permutation.
 ```
 
 The on-chain spikes take time and funds. They accept overrides so you can run
@@ -289,8 +333,10 @@ blocking on an interactive `near` prompt, and a stalled RPC is reported as a
 - **Deterministic release, not a trusted arbiter.** The predicate is recomputed
   on chain from pure integer math; a third party reproduces it offline (proved:
   20/20 byte-identical).
-- **Tamper-evident, not just hashed.** Four independent layers, ≥3 break on any
-  single-character edit (proved).
+- **Tamper-*detecting*, and honest about its limit.** Four layers, ≥3 break on any
+  single-character edit — but L1/L2/L3 are permutation-invariant, so it is a
+  corruption detector, **not** a guard against substitution (a full collision
+  takes ~2^16 permutations; we demonstrate one). Identity uses sha256.
 - **Both failure paths enforced.** A mismatched delivery *reverts*; an
   unsatisfied deal *refunds* (proved on testnet).
 - **No instance state, no admin key.** The rule lives entirely in the contract.
@@ -309,6 +355,8 @@ verifier.py              independent Python reference for the commitment
 verify_all.py            one-shot: build + golden + tamper + live-parity gates
 demo/index.html          self-contained interactive demo (JS, no chain needed)
 spike_s2_escrow.py       native-NEAR escrow round-trip test on testnet
+spike_s1_commitment_parity.py  re-runnable 20/20 three-way parity + on-chain forgery check
+spike_s6_commitment_collision.py  measures how weak the 4-layer checksum is (finds a collision)
 spike_s3_ft_escrow.py    NEP-141 (wNEAR) escrow round-trip test on testnet
 spike_s4_file_escrow.py  real FILE escrow by sha256, incl. a 1-byte substitution
 spike_s5_settlement_guard.py  settlement state machine: repeat release/refund are rejected

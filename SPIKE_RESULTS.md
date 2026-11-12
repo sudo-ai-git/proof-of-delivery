@@ -122,10 +122,15 @@ VERDICT: VALIDATED — 10/10 steps.
 
 An earlier note in this session quoted "74.3 bits" for the commitment. That
 number belongs to the *bucket signature* measured in a different suite, not to
-this predicate. **The 4-layer commitment carries ~52.9 bits**
-(32 + log₂231 + log₂231 + log₂37) and FNV-1a is non-cryptographic. It is a
-tamper-detection primitive; file identity uses the `sha256:` kind
-(256 bits). Recorded here so the wrong number does not propagate.
+this predicate. I then replaced it with "~52.9 bits", which is the raw output size
+and is *still* misleading, because it implies a ~2^26.5 birthday search. The
+measured truth is much weaker: L1 and L2 are both functions of the same byte sum,
+and L1/L2/L3 are all invariant under permuting the payload — so only L0 (32-bit
+non-cryptographic FNV-1a) binds, and a full 4-layer collision costs a ~2^16
+permutation birthday. Found in **0.8 s / 37,417 permutations** and confirmed on
+the live contract (`spike_s6_commitment_collision.py`,
+`spike_s1_commitment_parity.py`). It is a corruption/tamper *detector*; file
+identity uses `sha256:` (256 bits). Recorded so neither wrong number propagates.
 
 Bugs the file path surfaced:
 - The 4-layer predicate re-used for file identity would have been **wrong**
@@ -134,10 +139,39 @@ Bugs the file path surfaced:
   near-cli **echoes the scheduled call's arguments**, so every `create_deal*`
   was flagged. Match revert *phrases* (`deadline not reached`), never bare keys.
 
+## S1 — commitment parity, re-runnable
+
+The "20/20 on-chain == Python" claim was previously only a log line with no
+script. `spike_s1_commitment_parity.py` makes it reproducible, and also confirms
+the S6 collision against the live contract:
+
+| step | result |
+|---|---|
+| live contract == Python, 20 payloads | PASS **20/20** |
+| demo JS == Python, 20 payloads | PASS **20/20** |
+| two colliding payloads → identical commitment **from the live contract** | PASS (`a4445cec-26-a4-07` for both) |
+| Python agrees with the chain on the collision | PASS |
+
+```
+VERDICT: VALIDATED — three-way parity at 20/20, and the forgery confirmed on chain.
+```
+
+## S6 — how weak the 4-layer commitment actually is
+
+| step | result |
+|---|---|
+| L1/L2/L3 invariant under permutation | PASS (2000/2000 permutations) |
+| full 4-layer collision found by brute force | PASS — **37,417 permutations, 0.8 s** |
+| the two payloads differ | PASS (`'-EIL0OY-0P0DEDRV'` vs `DE00I0YOD--LPVER`) |
+| `mismatch_layers(B, commitment(A)) == 0` (forged) | PASS |
+
+This is the deliberate demotion of the project's own headline primitive, with the
+numbers that justify it.
+
 ## Explorer links (all re-queried against the RPC; the last one is a FAILURE by design)
 
-Contract `nft-repo-test-015.testnet`, code_hash `5khSThuj3AYV6dyZeUbzDprKQfY2xSpFJAtBhDNNKMC8`
-(= sha256 of the local wasm). Prefix every hash with `https://testnet.nearblocks.io/txns/`.
+Contract `nft-repo-test-015.testnet`, code_hash `DrbYEqynJEg3PSDuvCzAgWeFWofHxn4nPrCV44xMtLwq`
+(= sha256 of the committed wasm). Prefix every hash with `https://testnet.nearblocks.io/txns/`.
 
 | step | tx hash |
 |---|---|

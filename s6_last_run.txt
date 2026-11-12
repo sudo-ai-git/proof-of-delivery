@@ -1,0 +1,15 @@
+S6 — 4-layer commitment: forgeability, measured
+  [PASS] L1/L2/L3 invariant under permutation 2000/2000 permutations kept all three structural layers
+        (L0 changes: it is the only layer that sees byte ORDER)
+  [PASS] found a FULL 4-layer collision 37,417 permutations in 0.6s (37,416 distinct commitments)
+        payload A = '-EIL0OY-0P0DEDRV'
+        payload B = 'DE00I0YOD--LPVER'
+        commitment on both = a4445cec-26-a4-07
+  [PASS] the two payloads differ 
+  [PASS] predicate() accepts B for A's commitment (forged) 
+
+  structural fact: all 16! byte orders of a 16-byte payload share L1/L2/L3
+  so collision cost == an FNV-1a-32 birthday: ~2^16 permutations, measured 37,417 (0.6s in pure Python)
+  a cryptographic hash would need ~2^128 (sha256) — this is 2^16.
+
+VERDICT: the 4-layer commitment is NOT a security primitive. Three of its four layers are invariant under permutation, so its strength collapses to 32-bit FNV-1a — a full, concrete collision was found by brute force in seconds. It is retained only as a reproducible tamper-detection demo; file identity uses the sha256 kind.
