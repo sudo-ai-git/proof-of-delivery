@@ -134,6 +134,27 @@ Bugs the file path surfaced:
   near-cli **echoes the scheduled call's arguments**, so every `create_deal*`
   was flagged. Match revert *phrases* (`deadline not reached`), never bare keys.
 
+## Explorer links (all re-queried against the RPC; the last one is a FAILURE by design)
+
+Contract `nft-repo-test-015.testnet`, code_hash `5khSThuj3AYV6dyZeUbzDprKQfY2xSpFJAtBhDNNKMC8`
+(= sha256 of the local wasm). Prefix every hash with `https://testnet.nearblocks.io/txns/`.
+
+| step | tx hash |
+|---|---|
+| deploy pod-3 | `C7iMNjYXdZKpvzJjHSKDcJxmQWr36D3TeUVrRveMcebo` |
+| S2 create_deal (2 NEAR) | `5D3sgBtEm3WveXact9pGhWoZJ2JBSnS6VDUvUXLgwQxf` |
+| S2 deliver | `FaM3f4nr8EXdxG5qz3vPrc9xihCD9Tuywr132CWMWyks` |
+| S2 release → seller | `9pAse5XU2s1Ekn85pz3uMLzHY9ZA8JNqYwX2pr4ZtSzR` |
+| S2 refund | `Aw8y9cCf92JcHzhNvWMHQ2BX2aEkWgrDxMdeEBkxft4t` |
+| S3 ft_transfer_call | `HmXhLXPAXYFzhjjUDxuRrdfNvJroG88fd2igXTkei3g5` |
+| S3 deliver | `ArGfewebuUriV3BopzcqMJQZdxUqTtnzP9hMJETv65RW` |
+| S3 release → ft_transfer | `2gfkaT76MkjLurJey6SixDzpYyRRhZXGK2VmMDQmBuNj` |
+| S4 create_deal_sha | `5MDpT7kk5yA8CiqKJyESTZH4rcpnhitzQ6XmqaTLdm89` |
+| S4 deliver_bytes | `DFnU3j6oSCPJeyw5qdgLTCNaCLQ3boiDD7hzL9TookeZ` |
+| S4 release (correct file) | `4Ku5QTBJadTypo44rsmsCHXbAi3ez8cKevw2csvEvJFU` |
+| S4 substituted file delivered | `EqSxt4eL6UEPTz3Te5FGBYdFMTRSPRbfPQ4AFh5nPmKW` |
+| **S4 release on substituted file → FAILURE** | `Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1` |
+
 ## Reproduce
 
 ```bash

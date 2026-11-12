@@ -94,6 +94,61 @@ transfer all live in the contract. No backend can switch the release rule off,
 and no arbiter is required. This is money that only moves when the *condition*
 is met — the programmable-money primitive the track asks for.
 
+## Verified on NEAR testnet — every transaction
+
+Contract: **`nft-repo-test-015.testnet`** · code_hash **`5khSThuj3AYV6dyZeUbzDprKQfY2xSpFJAtBhDNNKMC8`**
+— which is the sha256 of this repo's `build/release/proof-of-delivery.wasm`, so the
+deployed code is byte-identical to what you can build here.
+
+Explorer links (`https://testnet.nearblocks.io/txns/<hash>`). Every one of these
+was re-queried against the RPC and resolves; the last row is a **failure**, by
+design:
+
+| suite | step | transaction |
+|---|---|---|
+| — | deploy `pod-3` | `C7iMNjYXdZKpvzJjHSKDcJxmQWr36D3TeUVrRveMcebo` |
+| S2 | `create_deal` — 2 NEAR escrowed | `5D3sgBtEm3WveXact9pGhWoZJ2JBSnS6VDUvUXLgwQxf` |
+| S2 | `deliver` (seller) | `FaM3f4nr8EXdxG5qz3vPrc9xihCD9Tuywr132CWMWyks` |
+| S2 | `release` — pays the seller +2 NEAR | `9pAse5XU2s1Ekn85pz3uMLzHY9ZA8JNqYwX2pr4ZtSzR` |
+| S2 | `refund` after the deadline | `Aw8y9cCf92JcHzhNvWMHQ2BX2aEkWgrDxMdeEBkxft4t` |
+| S3 | `ft_transfer_call` — creates the deal | `HmXhLXPAXYFzhjjUDxuRrdfNvJroG88fd2igXTkei3g5` |
+| S3 | `deliver` (seller) | `ArGfewebuUriV3BopzcqMJQZdxUqTtnzP9hMJETv65RW` |
+| S3 | `release` → `token.ft_transfer` | `2gfkaT76MkjLurJey6SixDzpYyRRhZXGK2VmMDQmBuNj` |
+| S4 | `create_deal_sha` — buyer commits a sha256 | `5MDpT7kk5yA8CiqKJyESTZH4rcpnhitzQ6XmqaTLdm89` |
+| S4 | `deliver_bytes` — binary file, base64 | `DFnU3j6oSCPJeyw5qdgLTCNaCLQ3boiDD7hzL9TookeZ` |
+| S4 | `release` — pays for the **correct** file | `4Ku5QTBJadTypo44rsmsCHXbAi3ez8cKevw2csvEvJFU` |
+| S4 | substituted file delivered (the tx itself is honest) | `EqSxt4eL6UEPTz3Te5FGBYdFMTRSPRbfPQ4AFh5nPmKW` |
+| S4 | **`release` on the substituted file → FAILURE** | `Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1` |
+
+You do not have to trust the explorer UI (it also rate-limits bots). Query the
+chain yourself:
+
+```bash
+# the revert — expect status: Failure, "delivery does not satisfy the predicate"
+curl -s https://rpc.testnet.fastnear.com -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tx","params":{"tx_hash":"Ed4UnTwQAHr5DQGsCSgw8jtg3aSE1bn7TRHh7XEZRnC1","sender_account_id":"nft-repo-test-015.testnet","wait_until":"FINAL"}}' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['status'])"
+
+# the deployed code is this repo's build
+python3 -c "import hashlib;print(hashlib.sha256(open('build/release/proof-of-delivery.wasm','rb').read()).hexdigest())"
+```
+
+## Screenshots
+
+Committed under [`screenshots/`](screenshots/) — generated from real output, not mockups:
+
+| file | shows |
+|---|---|
+| `screenshots/09_chain_state.png` | live chain read: `code_hash 5khSThuj…` and the FAILURE/SUCCESS verdict per transaction |
+| `screenshots/08_file_escrow.png` | the file run — sha256 escrow, one-byte substitution rejected (tx links visible) |
+| `screenshots/04_escrow_roundtrip.png` | native-NEAR run — release pays, tamper reverts, refund (tx links visible) |
+| `screenshots/05_stablecoin.png` | NEP-141 run — VERDICT VALIDATED (tx links visible) |
+| `screenshots/03_verify_all.png` | `verify_all.py` → ALL GATES PASS (4/4) |
+| `screenshots/01/02_commitment_*.png` | the browser demo, satisfied → tampered |
+| `screenshots/demo.mp4` | 9s screen recording of the demo interaction |
+
+`x_demo/make_assets.py` regenerates all of them; `x_demo/POST.md` is the demo post.
+
 ## Do X → see Y (a judge can run every line)
 
 **Prereq:** Node.js (`npm install` fetches the contract toolchain), the `near`
