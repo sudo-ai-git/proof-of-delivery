@@ -53,7 +53,13 @@ is met — the programmable-money primitive the track asks for.
 
 ## Do X → see Y (a judge can run every line)
 
-**Prereq:** `near` CLI (testnet), `asb`, `python3`. No API keys, no secrets.
+**Prereq:** Node.js (`npm install` fetches the contract toolchain), the `near`
+CLI for testnet, and `python3`. No API keys, no secrets.
+
+```bash
+npm install                       # near-sdk-as@3.2.3 + asbuild (provides `asb`)
+export PATH="$PWD/node_modules/.bin:$PATH"
+```
 
 **Start here — one command runs every gate** (offline + live parity):
 
@@ -70,8 +76,6 @@ python3 verify_all.py --build --selftest
 Then the individual steps:
 
 ```bash
-export PATH="<repo>/node_modules/.bin:$HOME/.npm-global/bin:$PATH"
-
 # 0. Independent verifier — no chain, no account needed:
 python3 verifier.py "the quick brown fox"
 #   -> 338f85c2-a6-3d-09   (this is what the contract returns too)

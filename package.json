@@ -1,9 +1,18 @@
 {
   "name": "proof-of-delivery",
-  "version": "1.0.0",
-  "description": "Proof-of-Delivery escrow: release funds only when a machine-verifiable predicate on the delivered artifact holds.",
+  "version": "2.0.0",
+  "description": "Escrowed agent payments that release funds only when delivery is machine-verified on chain. NEAR Hackathon entry.",
+  "license": "MIT",
   "scripts": {
     "build": "asb assembly/index.ts --target release",
-    "test": "asp --verbose"
+    "verify": "python3 verify_all.py --selftest"
+  },
+  "devDependencies": {
+    "assemblyscript": "0.18.32",
+    "asbuild": "^0.2.0",
+    "near-mock-vm": "3.2.2",
+    "near-sdk-as": "3.2.3",
+    "near-sdk-bindgen": "3.2.1",
+    "visitor-as": "0.5.0"
   }
 }

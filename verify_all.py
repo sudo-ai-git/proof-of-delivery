@@ -29,7 +29,13 @@ import verifier as V  # noqa: E402
 
 CONTRACT = "nft-repo-test-015.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH="/home/sudosudo/node_modules/.bin:/home/sudosudo/.npm-global/bin:" + os.environ.get("PATH", ""))
+ENV = dict(os.environ, PATH=os.path.join(HERE, "node_modules", ".bin")
+           + os.pathsep + os.environ.get("PATH", ""))
+
+
+def _asb():
+    import shutil
+    return shutil.which("asb") or os.path.join(HERE, "node_modules", ".bin", "asb")
 
 # GOLDEN: recorded from the deployed contract (near view ... commitment) and
 # cross-checked against demo/index.html. These are the reference, not derived
@@ -77,7 +83,7 @@ def near_view(method, args):
 def g_build(do_build):
     wasm = os.path.join(HERE, "build", "release", "proof-of-delivery.wasm")
     if do_build:
-        p = subprocess.run(["/home/sudosudo/node_modules/.bin/asb", "assembly/index.ts", "--target release"],
+        p = subprocess.run([_asb(), "assembly/index.ts", "--target release"],
                            capture_output=True, text=True, cwd=HERE, env=ENV, timeout=600)
         if p.returncode != 0:
             return gate("G1 build", False, (p.stdout + p.stderr)[-160:])

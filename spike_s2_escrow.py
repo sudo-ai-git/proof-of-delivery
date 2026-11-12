@@ -27,7 +27,8 @@ CONTRACT = "nft-repo-test-015.testnet"
 BUYER = "nft-repo-test-015.testnet"
 SELLER = "nft-repo-loop4.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH="/home/sudosudo/node_modules/.bin:/home/sudosudo/.npm-global/bin:" + os.environ.get("PATH", ""))
+ENV = dict(os.environ, PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
+           + os.pathsep + os.environ.get("PATH", ""))
 
 FAILS = []
 

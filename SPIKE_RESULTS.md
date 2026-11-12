@@ -99,11 +99,14 @@ any of our code.
 ## Reproduce
 
 ```bash
-cd /home/sudosudo/proof-of-delivery
-export PATH="/home/sudosudo/node_modules/.bin:/home/sudosudo/.npm-global/bin:$PATH"
-asb assembly/index.ts --target release          # -> build/release/proof-of-delivery.wasm
+cd proof-of-delivery
+npm install                                      # toolchain (near-sdk-as, asbuild, …)
+export PATH="$PWD/node_modules/.bin:$PATH"
+asb assembly/index.ts --target release           # -> build/release/proof-of-delivery.wasm
 python3 verifier.py "some artifact text"         # independent commitment, no chain needed
-python3 spike_s2_escrow.py                       # full escrow round trip on testnet (~90s)
+python3 verify_all.py --selftest                 # all gates: golden + tamper + live parity
+python3 spike_s2_escrow.py                       # full NEAR round trip on testnet (~90s)
+python3 spike_s3_ft_escrow.py                    # NEP-141 (wNEAR) round trip on testnet
 ```
 
 Environment note: the public `rpc.testnet.near.org` endpoint is deprecated and

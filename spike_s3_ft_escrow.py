@@ -26,7 +26,8 @@ BUYER = "nft-repo-test-014.testnet"   # must differ from ESCROW: FTs reject self
 SELLER = "nft-repo-loop4.testnet"
 FT = "wrap.testnet"
 RPC = "https://rpc.testnet.fastnear.com"
-ENV = dict(os.environ, PATH="/home/sudosudo/node_modules/.bin:/home/sudosudo/.npm-global/bin:" + os.environ.get("PATH", ""))
+ENV = dict(os.environ, PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin")
+           + os.pathsep + os.environ.get("PATH", ""))
 ONE = 10 ** 24
 AMOUNT = str(ONE // 2)  # 0.5 wNEAR
 
