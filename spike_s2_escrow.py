@@ -59,7 +59,8 @@ def chk(name, cond, detail=""):
 
 
 def run_tx(method, args, signer, deposit=None, gas=300_000_000_000_000):
-    """Returns (ok, detail). ok is True ONLY if the tx landed without a revert."""
+    """Returns (ok, detail). ok is True ONLY if the tx landed without a revert.
+    If reverted, detail contains the revert reason (e.g. 'delivery does not satisfy the predicate')."""
     cmd = ["near", "call", CONTRACT, method, json.dumps(args),
            "--accountId", signer, "--gas", str(gas), "--networkId", NET]
     if deposit:
@@ -74,6 +75,14 @@ def run_tx(method, args, signer, deposit=None, gas=300_000_000_000_000):
         or ("deadline not reached" in flat) or ("no deal" in flat) or ("only the seller" in flat) \
         or ("only the buyer" in flat)
     ok = (p.returncode == 0) and ("Transaction Id" in out) and not reverted
+    if reverted:
+        # Extract the revert reason from the log line
+        reason = "reverted"
+        for marker in ["does not satisfy the predicate", "deadline not reached", "deal already settled", "no deal", "only the seller", "only the buyer", "deadline in the past", "attach a deposit", "deal exists", "expected 64 hex chars"]:
+            if marker in flat:
+                reason = marker
+                break
+        return False, reason
     return ok, flat[-260:]
 
 

@@ -88,6 +88,14 @@ def run_tx(method, args, signer, deposit=None, gas=200_000_000_000_000):
                                  "only the seller", "only the buyer", "requires a sha256 deal",
                                  "deadline not reached", "deadline in the past", "expected 64 hex"))
     ok = (p.returncode == 0) and ("Transaction Id" in out) and not bad
+    if not ok and bad:
+        # Extract the revert reason from the log line
+        reason = "reverted"
+        for marker in ["does not satisfy the predicate", "deadline not reached", "deal already settled", "no deal", "only the seller", "only the buyer", "requires a sha256 deal", "deadline in the past", "expected 64 hex chars"]:
+            if marker in flat:
+                reason = marker
+                break
+        return False, reason
     return ok, flat[-220:]
 
 
