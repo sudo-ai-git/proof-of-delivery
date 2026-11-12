@@ -8,7 +8,7 @@ All results below are **measured by execution** against NEAR testnet
 | Fact | Value |
 |---|---|
 | Toolchain | `near-sdk-as@3.2.3` + `asbuild` (AssemblyScript) |
-| Build artifact | `build/release/proof-of-delivery.wasm` — **21,568 B** |
+| Build artifact | `build/release/proof-of-delivery.wasm` — **22,844 B** (`version() == "pod-2"`) |
 | Deployed | `nft-repo-test-015.testnet`, tx `4rpJCFKG…`, re-deployed several times during spikes |
 | Exports | `commitment, check, mismatch_count, version, create_deal, deliver, delivery_ok, release, refund, get_deal, ft_on_transfer` |
 
