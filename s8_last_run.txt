@@ -1,0 +1,12 @@
+S8 — predicate-injection guard
+  [PASS] valid_predicate() rejects the injecting predicate 
+  [PASS] valid_predicate() accepts a real 4-layer digest b273a1f7-c9-8a-04
+  [PASS] valid_predicate() accepts a sha256 predicate 
+  [PASS] valid_id() rejects a quote in the seller 
+  [PASS] create_deal REVERTS on an injecting predicate panicked: invalid predicate: expected a digest, filename: \"
+  [PASS]   no deal was stored get_deal reverts with 'no deal'
+  [PASS] create_deal still accepts a valid predicate 
+  [PASS]   the stored record has exactly one 'deadline' and one 'released' {"token":"","buyer":"nft-repo-test-015.testnet","seller":"nft-repo-loop4.testnet","amount":"1000000000000000000000000","
+  [PASS] refund before the real deadline still REVERTS panicked: deadline not reached, filename: \"assemb
+
+VERDICT: VALIDATED — a crafted predicate can no longer break out of its JSON field: the contract rejects it, stores no deal, and the honest path is unaffected with exactly one deadline/released in the record.

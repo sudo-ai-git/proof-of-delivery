@@ -237,6 +237,40 @@ function boolField(json: string, key: string): bool {
   return json.substring(i, i + 4) == "true";
 }
 
+// ── input validation: the deal JSON is built by concatenation ───────────────
+// A predicate is ALWAYS a digest: either "aabbccdd-11-22-33" or
+// "sha256:<64 hex>". The only characters that can break the concatenated deal
+// JSON are a quote and a backslash, so excluding exactly those (plus non-
+// printable bytes) is what makes the record unforgeable. Do NOT restrict to hex:
+// the "sha256:" prefix contains letters, and rejecting it would break
+// create_deal_sha.
+export function valid_predicate(p: string): bool {
+  if (p.length == 0 || p.length > 80) {
+    return false;
+  }
+  for (let i = 0; i < p.length; i++) {
+    const c = p.charCodeAt(i);
+    if (c == 34 || c == 92 || c < 32 || c > 126) {   // '"', '\', non-printable
+      return false;
+    }
+  }
+  return true;
+}
+
+// Account ids / deal ids: printable ASCII, no quote, no backslash.
+export function valid_id(s: string): bool {
+  if (s.length == 0 || s.length > 64) {
+    return false;
+  }
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c == 34 || c == 92 || c < 32 || c > 126) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function dealJson(
   token: string, buyer: string, seller: string, amount: string, predicate: string,
   commitment: string, deadline: u64, released: bool,
@@ -261,7 +295,7 @@ function payout(token: string, to: string, amount: string): void {
 
 // ── the verified primitive (public, so a judge can call it directly) ────────
 export function version(): string {
-  return "pod-4";   // pod-4 fixes a double-payout: release/refund were re-callable
+  return "pod-6";   // pod-6 makes settlement terminal: deliver() can no longer re-arm it
 }
 
 export function commitment(payload: string): string {
@@ -291,6 +325,9 @@ export function create_deal_sha(deal_id: string, seller: string, expected_sha256
 // ── escrow: native NEAR ─────────────────────────────────────────────────────
 export function create_deal(deal_id: string, seller: string, predicate: string, deadline: u64): void {
   assert(!deals.contains(deal_id), "deal exists");
+  assert(valid_id(deal_id), "invalid deal_id");
+  assert(valid_id(seller), "invalid seller");
+  assert(valid_predicate(predicate), "invalid predicate: expected a digest");
   assert(Context.attachedDeposit > u128.Zero, "attach a deposit");
   assert(deadline > Context.blockTimestamp, "deadline in the past");
   deals.set(deal_id, dealJson(
@@ -311,8 +348,11 @@ export function ft_on_transfer(sender_id: string, amount: string, msg: string): 
   const predicate = field(msg, "predicate");
   const deadline = numField(msg, "deadline");
   assert(deal_id.length > 0, "msg needs deal_id");
+  assert(valid_id(deal_id), "invalid deal_id");
   assert(!deals.contains(deal_id), "deal exists");
   assert(seller.length > 0, "msg needs seller");
+  assert(valid_id(seller), "invalid seller");
+  assert(valid_predicate(predicate), "invalid predicate: expected a digest");
   assert(deadline > Context.blockTimestamp, "deadline in the past");
   deals.set(deal_id, dealJson(token, sender_id, seller, amount, predicate,
     "", deadline, false));
@@ -324,6 +364,10 @@ export function ft_on_transfer(sender_id: string, amount: string, msg: string): 
 export function deliver(deal_id: string, payload: string): void {
   assert(deals.contains(deal_id), "no deal");
   const j = <string>deals.get(deal_id, "");
+  // A settled deal is terminal. Without this, deliver() re-serialised the record
+  // with released=false and refilled the cleared commitment slot, re-arming the
+  // release()/refund() guards and allowing a repeat payout out of pooled escrow.
+  assert(!boolField(j, "released"), "deal already settled");
   assert(field(j, "seller") == Context.sender, "only the seller delivers");
   const nc = digestFor(field(j, "predicate"), payload);
   deals.set(deal_id, dealJson(
@@ -339,6 +383,7 @@ export function deliver(deal_id: string, payload: string): void {
 export function deliver_bytes(deal_id: string, b64: string): void {
   assert(deals.contains(deal_id), "no deal");
   const j = <string>deals.get(deal_id, "");
+  assert(!boolField(j, "released"), "deal already settled");   // same re-arm hole as deliver()
   assert(field(j, "seller") == Context.sender, "only the seller delivers");
   assert(isShaPredicate(field(j, "predicate")), "deliver_bytes requires a sha256 deal");
   const dig = SHA_PREFIX + toHex(math.sha256(base64.decode(b64)));

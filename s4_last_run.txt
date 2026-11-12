@@ -2,14 +2,14 @@ S4 spike — file escrow by sha256 identity (testnet)
   asset_A.bin  2078 bytes  sha256=d1f1e2d802e4d1679aa45214…
   asset_B.bin  2078 bytes  sha256=c8a16fb91de593660296b56a…  (1 byte differs)
   [PASS] contract sha256_of == sha256sum (python) 445f2822bfc20138… vs 445f2822bfc20138…
-  [PASS] create_deal_sha (buyer commits to sha256 of the file) he explorer for more info: https://testnet.nearblocks.io/txns/2J3zr78KwRSoeE6K5jxmn5p3CwmXNhrJHmUF23sBo11i '' 
-  [PASS] deliver_bytes (binary file, base64) he explorer for more info: https://testnet.nearblocks.io/txns/AwpPfuev8kR7YHrpPnMhRXQsMmx91uyffqJTnXMrtfp7 '' 
+  [PASS] create_deal_sha (buyer commits to sha256 of the file) he explorer for more info: https://testnet.nearblocks.io/txns/GaUXU8CiUFZHmbt2Diu3VNZYtroFgYp7TFMoLZ9KNrag '' 
+  [PASS] deliver_bytes (binary file, base64) he explorer for more info: https://testnet.nearblocks.io/txns/H6Nm98gbBsqNkcLaRWMFdcpCdBJz7gpbqyGBxSeCUhg9 '' 
   [PASS] delivery_ok -> true (contract hashed the bytes) 
   [PASS] stored digest == the file's sha256 
-  [PASS] release pays the seller he explorer for more info: https://testnet.nearblocks.io/txns/CeZZzXdS1fT1d2aWK9jnuVAz94ZA9V5SC51MPEyQwNXi '' 
-  [PASS] substituted file delivered (tx itself succeeds)  info: https://testnet.nearblocks.io/txns/BA9t53Zj6ZWgvd8sLVCDLEo8pcko31B8NLL3J7AHydRX '' 
+  [PASS] release pays the seller he explorer for more info: https://testnet.nearblocks.io/txns/Du9SasPs1mqCurocL7DiUuKfPdp1Um9QKBhadRRztVCh '' 
+  [PASS] substituted file delivered (tx itself succeeds)  info: https://testnet.nearblocks.io/txns/6VptzDQm7mUbBoDoXyWej7D6qjqVkxNgLbHziF7BLnbd '' 
   [PASS] delivery_ok -> false for the substituted file 
-  [PASS] release REJECTS the substituted file ery does not satisfy the predicate, filename: \"assembly/index.ts\" line: 258 col: 3"}}}} 
-  [PASS] create_deal_sha rejects a malformed sha256 d 64 hex chars of sha256, filename: \"assembly/index.ts\" line: 204 col: 3"}}}} 
+  [PASS] release REJECTS the substituted file ery does not satisfy the predicate, filename: \"assembly/index.ts\" line: 298 col: 3"}}}} 
+  [PASS] create_deal_sha rejects a malformed sha256 d 64 hex chars of sha256, filename: \"assembly/index.ts\" line: 235 col: 3"}}}} 
 
 VERDICT: VALIDATED — the buyer fixes the file's sha256 before funding; the contract decodes the delivered bytes, hashes them itself, and pays only on an exact match. A one-byte substitution is rejected on chain.

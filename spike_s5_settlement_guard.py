@@ -146,6 +146,28 @@ def main():
     chk("settled deal is marked released and its slot cleared",
         '"released":true' in j and '"commitment":""' in j, j[:130])
 
+    # ── case 4: deliver must NOT be able to re-arm a settled deal ───────────
+    # This is the case spike_s5 originally missed: pod-4 guarded release/refund
+    # but deliver() re-serialised the record with released=false and refilled the
+    # commitment slot, so release -> deliver -> release paid twice (measured: a
+    # 1-NEAR deal paid 1.9996 NEAR). The guard belongs on every state transition,
+    # not just on the payout functions.
+    d4 = f"g4{int(time.time())}"
+    tx("create_deal", {"deal_id": d4, "seller": SELLER, "predicate": pred,
+                       "deadline": str(deadline)}, BUYER, 1)
+    tx("deliver", {"deal_id": d4, "payload": payload}, SELLER)
+    okr1, _ = tx("release", {"deal_id": d4}, BUYER)
+    chk("re-arm: first release pays", okr1)
+    okd, dd = tx("deliver", {"deal_id": d4, "payload": payload}, SELLER)
+    chk("  re-delivering a SETTLED deal REVERTS", (not okd) and "already settled" in dd,
+        "revert 'deal already settled'" if not okd else "RE-ARMED")
+    okr2, dr2 = tx("release", {"deal_id": d4}, BUYER)
+    chk("  the follow-up release REVERTS too", (not okr2) and "already settled" in dr2,
+        "revert 'deal already settled'" if not okr2 else "PAID AGAIN")
+    okf2, df2 = tx("refund", {"deal_id": d4}, BUYER)
+    chk("  and refund on a settled deal REVERTS", (not okf2) and "already settled" in df2,
+        "revert 'deal already settled'" if not okf2 else "PAID AGAIN")
+
     print()
     if FAILS:
         print(f"VERDICT: PARTIAL — failing steps: {FAILS}")

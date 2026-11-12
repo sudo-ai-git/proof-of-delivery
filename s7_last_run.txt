@@ -1,14 +1,14 @@
 S7 — agent economy loop: post -> bid -> award -> deliver -> settle
 
 1. BUYER nft-repo-test-014.testnet posts a job (budget 2.0 NEAR): nightly market report for NEAR Intents volume
-2.   SELLER nft-repo-loop4.testnet quotes 0.385 NEAR, commits sha256=a98ada5be9aaadae…
-2.   SELLER nft-repo-test-013.testnet quotes 0.377 NEAR, commits sha256=6b6e8d3b69df960e…
+2.   SELLER nft-repo-loop4.testnet quotes 0.385 NEAR, commits sha256=6c9f2ac81f067e3e…
+2.   SELLER nft-repo-test-013.testnet quotes 0.377 NEAR, commits sha256=725ee1a38bf84688…
 3. BUYER awards to nft-repo-test-013.testnet at 0.377 NEAR (outbid: nft-repo-loop4.testnet)
-  [PASS] BUYER escrows the winning price against the seller's committed hash  info: https://testnet.nearblocks.io/txns/91AMDus7gWTrAEdTBjENcxXKNmcRPTWEnxMLud1LhqqB '' 
-  [PASS] WINNER delivers the artifact it committed to  info: https://testnet.nearblocks.io/txns/CBaSzVzyvcJmN165qn93bsTPRUy961qoQs9uB9CHsQKy '' 
+  [PASS] BUYER escrows the winning price against the seller's committed hash  info: https://testnet.nearblocks.io/txns/7k1SbmkeryJHDTuEqP8SS5HjUNYqnwrgBsphbnmeEyzz '' 
+  [PASS] WINNER delivers the artifact it committed to  info: https://testnet.nearblocks.io/txns/CEfgdRGmmZAWWMhvGJxV5ihuoZXZN8mRdoJf44mARycp '' 
   [PASS]   the contract hashes it itself -> predicate satisfied 
-  [PASS] anyone triggers release() -> the winner is PAID  info: https://testnet.nearblocks.io/txns/6Kv3ZqxTN8vBTgSf1knvDKu9CPjMWzjTLeSrnpjvTNv2 '' 
-      winner balance 10.3729 -> 10.7499 NEAR  (+0.3770)
+  [PASS] anyone triggers release() -> the winner is PAID  info: https://testnet.nearblocks.io/txns/GB5vnZ1HhtQN6SpDEYY3BV1mRMvjdRZT4L5TPw1Msj8a '' 
+      winner balance 11.5033 -> 11.8803 NEAR  (+0.3770)
   [PASS]   the winner's balance rose by the awarded price 
 
 6. ROUND 2 — adversarial seller: wins, then delivers DIFFERENT bytes
@@ -17,6 +17,6 @@ S7 — agent economy loop: post -> bid -> award -> deliver -> settle
   [PASS]   the contract says NO 
   [PASS]   release REVERTS -> the seller is not paid 
       waiting for the deadline so the buyer can reclaim its escrow …
-  [PASS]   the buyer is REFUNDED at the deadline  info: https://testnet.nearblocks.io/txns/47a9ozsJicQ2jH391YYRKPv71hgSNESz2PoLa9LgHGrg '' 
+  [PASS]   the buyer is REFUNDED at the deadline  info: https://testnet.nearblocks.io/txns/GTTgHRav3qXD4XWybgFGqQnzAePa6rrAf7Qn217YfNeC '' 
 
 VERDICT: VALIDATED — a buyer agent posted a job, two seller agents quoted a price against a committed content hash, the buyer awarded and escrowed, the winner delivered and was paid, and an adversarial seller who swapped the artifact was not paid while the buyer was refunded. Real funds moved on NEAR.

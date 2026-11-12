@@ -8,7 +8,7 @@ All results below are **measured by execution** against NEAR testnet
 | Fact | Value |
 |---|---|
 | Toolchain | `near-sdk-as@3.2.3` + `asbuild` (AssemblyScript) |
-| Build artifact | `build/release/proof-of-delivery.wasm` — **33,006 B** (`version() == "pod-4"`), committed so the code_hash is offline-checkable |
+| Build artifact | `build/release/proof-of-delivery.wasm` — **33,785 B** (`version() == "pod-6"`), committed so the code_hash is offline-checkable |
 | Deployed | `nft-repo-test-015.testnet`, tx `4rpJCFKG…`, re-deployed several times during spikes |
 | Exports | `version, commitment, check, mismatch_count, sha256_of, create_deal, create_deal_sha, deliver, deliver_bytes, delivery_ok, release, refund, get_deal, ft_on_transfer` |
 
@@ -170,7 +170,7 @@ numbers that justify it.
 
 ## Explorer links (all re-queried against the RPC; the last one is a FAILURE by design)
 
-Contract `nft-repo-test-015.testnet`, code_hash `DrbYEqynJEg3PSDuvCzAgWeFWofHxn4nPrCV44xMtLwq`
+Contract `nft-repo-test-015.testnet`, code_hash `78AZtabZdjQDU83EWuuA4QZ2h9JtbUSXZmLhtUGFJS3T`
 (= sha256 of the committed wasm). Prefix every hash with `https://testnet.nearblocks.io/txns/`.
 
 | step | tx hash |
@@ -249,6 +249,79 @@ VERDICT: VALIDATED — 10/10. Real funds moved on NEAR.
 
 **Honest boundary:** the bidding round is coordinated by the script. Only
 settlement is on chain; an on-chain sealed-bid contract is the next step.
+
+## S8 — the predicate-injection guard (a third real bug)
+
+The deal record is hand-built by concatenation, and the parser returns the *first*
+match for a key. `predicate` was free text, so
+
+```
+x","released":true,"deadline":1,"p":"
+```
+
+broke out of its string and injected a second `deadline` **before** the real one.
+Because `deliver()` re-serializes the record via `numField(...,"deadline")`, the
+deal's effective deadline became `1` — so **after a seller delivered, `refund`
+succeeded immediately**: the buyer reclaims the escrow and keeps the artifact,
+racing the seller's own `release`. Injecting `released:true` instead strands the
+deposit permanently.
+
+| step | result |
+|---|---|
+| `valid_predicate` rejects the injecting predicate | PASS |
+| `valid_predicate` accepts a 4-layer digest and a `sha256:` predicate | PASS |
+| `valid_id` rejects a quote in the seller | PASS |
+| `create_deal` REVERTS on an injecting predicate | PASS |
+| no deal was stored | PASS |
+| the honest path still works, record has exactly one `deadline`/`released` | PASS |
+| refund before the real deadline still REVERTS | PASS |
+
+```
+VERDICT: VALIDATED — 9/9
+```
+
+**Fix (`pod-5`)**: `valid_predicate` / `valid_id` reject quote, backslash and
+non-printable bytes in `predicate`, `deal_id` and `seller`, in `create_deal` and
+`ft_on_transfer`.
+
+Two mistakes made *while writing that fix*, both caught by the test:
+1. the first version allowed only hex / `-` / `:` — which **rejected `sha256:`**
+   (the letters `s`/`h` are not hex) and would have broken `create_deal_sha`;
+2. the first version of one assertion was a **tautology** that could never fail.
+   An assertion that cannot fail is worse than no assertion.
+
+## S5 extended — the pod-4 fix was defeatable (`pod-6`)
+
+The pod-4 guard lived only on the payout functions. `deliver()` / `deliver_bytes()`
+had **no settled check**, and they re-serialize with `released = false` **and refill
+the commitment slot `release()` clears** — so the seller could re-arm a settled deal:
+
+```
+release #1     -> PAID       +0.9998
+deliver AGAIN  -> ACCEPTED   (rewrites released=false, refills the commitment)
+release #2     -> PAID AGAIN +0.9998
+TOTAL for ONE 1-NEAR deal: 1.9996 NEAR
+```
+
+Because every deposit sits in one pooled balance this escalates from "I get my own
+NEAR twice" to draining every native deal in the escrow. The README's claim that
+the barriers were "independent" was **false**, and S5 missed it because it only
+tested release→release and release→refund — never the deliver path.
+
+**Fix (`pod-6`)**: a settled deal is terminal, asserted in `deliver` *and*
+`deliver_bytes`. S5 gained the missing case and is now **11/11**, including
+"re-delivering a SETTLED deal REVERTS".
+
+## Full suite on `pod-6`
+
+| suite | result |
+|---|---|
+| S2 native-NEAR escrow | **11/11** |
+| S3 NEP-141 (wNEAR) | **10/10** |
+| S4 real file by sha256 | **10/10** |
+| S5 settlement guard (incl. the re-arm) | **11/11** |
+| S7 agent-economy loop | **10/10** |
+| S8 predicate-injection guard | **9/9** |
 
 ## Reproduce
 

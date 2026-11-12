@@ -1,5 +1,5 @@
 S5 spike — settlement guard (double-payout regression)
-  [PASS] first release pays the seller +0.9998 NEAR
+  [PASS] first release pays the seller +1.2007 NEAR
   [PASS] second release REVERTS (deal already settled) revert 'deal already settled'
   [PASS] rejected call pays nothing delta across the rejected call = +0.0000 NEAR
   [PASS] release on the second deal succeeds 
@@ -7,5 +7,9 @@ S5 spike — settlement guard (double-payout regression)
   [PASS] refund AFTER release REVERTS (no double payout) revert 'deal already settled'
   [PASS] a fresh deal is still releasable 
   [PASS] settled deal is marked released and its slot cleared {"token":"","buyer":"nft-repo-test-015.testnet","seller":"nft-repo-loop4.testnet","amount":"1000000000000000000000000","predicate"
+  [PASS] re-arm: first release pays 
+  [PASS]   re-delivering a SETTLED deal REVERTS revert 'deal already settled'
+  [PASS]   the follow-up release REVERTS too revert 'deal already settled'
+  [PASS]   and refund on a settled deal REVERTS revert 'deal already settled'
 
 VERDICT: VALIDATED — release() and refund() are single-shot: a repeat call and a release-then-refund both revert with 'deal already settled', and the honest path still pays exactly once.
