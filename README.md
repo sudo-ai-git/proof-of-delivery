@@ -1,14 +1,24 @@
 # Proof-of-Delivery — escrowed agent payments that release only on verified delivery
 
-**NEAR HACKATHON entry · tracks: `swarms`, `agents`, `open`, `security`**
+**NEAR HACKATHON entry · tracks: `swarms`, `defi`, `open`, `agents`**
 
-> Track choice is deliberate, not incidental. The live submission directory at
-> the time of writing shows `security` and `agents` are the **two most crowded
-> tracks in the hackathon** (~300 entries each), while `swarms` has ~60. A
-> submission is scored separately in every track it lists, so the thin track is
-> where a deeply-verified settlement primitive has its best shot — and an escrow
-> with a bidding round *is* the "coordination market / intent-based settlement"
-> that `swarms` asks for.
+> Track choice is deliberate, not incidental, and it is driven by the live
+> submission directory rather than by taste. At the time of writing the field was
+> **649 projects**, and the crowding is wildly uneven: `security` ~308, `agents`
+> ~302, `realworld`/`open` ~127, `business` ~122, `privacy` ~116, **`defi` ~110**,
+> **`swarms` ~61**, `thesis` ~55. A submission is scored separately in every track
+> it lists (still one submission), so the thin track is where a deeply-verified
+> settlement primitive has its best shot.
+>
+> - **`swarms`** — the best ratio in the field (~61 for 3 slots). A bidding round
+>   with escrowed settlement *is* the "coordination market / intent-based
+>   settlement" the track asks for. Primary.
+> - **`defi`** — a NEP-141 escrow that pays only on a verifiable delivery is a
+>   settlement primitive; here the mechanism is the *core* of the track rather
+>   than a guest.
+> - **`open`**, **`agents`** — cheap, legitimate extras.
+> - **`security` deliberately dropped.** It is the second-largest field, and an
+>   escrow contract is not a security tool — the reviewers said so bluntly.
 
 ## The problem (one line)
 
@@ -104,6 +114,33 @@ breaks ≥3 of the 4 layers (`mismatch_count()` reports which).
 `verifier.py`, and the JS in `demo/index.html`. Re-runnable:
 `python3 spike_s1_commitment_parity.py` → 20/20 three-way.
 
+## What this actually verifies — and what it does not
+
+It verifies **byte identity**: the artifact handed over is exactly the artifact
+whose hash the buyer committed to. The contract hashes the delivered bytes itself,
+so the seller cannot fake *that*.
+
+It does **not** verify satisfaction, quality or usefulness. An agent-protocol
+review put it precisely: *"hash equality proves integrity, not satisfaction."* A
+seller who commits the sha256 of a one-line junk file, wins on price, and delivers
+exactly that junk has **broken no rule** — `delivery_ok` is true and the contract
+pays in full. In the loop above, the buyer awards the cheapest quote among
+artifacts it has never seen and cannot inspect, so the seller's dominant strategy
+is to commit to nothing. That is a lemons market with a cryptographic receipt.
+
+This is a **settlement primitive, not a quality oracle.** The obvious next design
+step is to make judgment an *address* rather than a string prefix —
+`evaluator: AccountId` plus a `verdict(deal_id, ok, spec_hash)` call, the shape
+ERC-8183 uses — so an escrow can defer to a TEE signer, an LLM jury, a human, or
+a stake-and-slash game, with the sha256 path as the zero-configuration default.
+
+What the predicate **does** verify today, verified on chain:
+
+- the delivered bytes hash to the value the buyer fixed *before* funding;
+- a substituted artifact cannot satisfy it — one byte different reverts;
+- nobody can settle twice (see **Security**);
+- a crafted predicate cannot forge the deal's own fields (see **Security**).
+
 ## Try the predicate with no chain at all
 
 Open `demo/index.html` in a browser: type a deliverable, watch the 4 layers
@@ -162,43 +199,85 @@ transfer all live in the contract. No backend can switch the release rule off,
 and no arbiter is required. This is money that only moves when the *condition*
 is met — the programmable-money primitive the track asks for.
 
-## Security: a real bug we found and fixed
+## Security: three real bugs, found by review, reproduced, fixed, pinned
 
-`pod-3` shipped with a **double-payout vulnerability**, and our own 11/10/10
-"strict" suites did not catch it because they only tested the happy path and the
-predicate reverts — never the *settlement* state machine.
+None of these were caught by the project's own suites. Two came from adversarial
+review that was specifically told to attack the state machine and the parser — and
+**one of them defeated the fix for another**, which is the interesting part.
+
+### 1. Repeat payout (`pod-3` → `pod-4`)
 
 `release()` wrote `released: true` but never **checked** it, and `refund()`
-ignored it entirely. Consequences:
+ignored it. So `release()` was repeatable, and release-then-refund paid both
+sides. **Reproduced: one 1-NEAR deal paid 2.2007 NEAR.** Fixed with an
+`already settled` assert in both functions.
 
-- `release()` could be called repeatedly — anyone could drain the contract.
-- `release()` then (after the deadline) `refund()` paid the seller **and** the buyer.
+### 2. The fix was defeatable — `deliver()` re-armed it (`pod-4` → `pod-6`)
 
-Reproduced on chain before fixing: **one 1-NEAR deal paid out 2.2007 NEAR.**
-
-The fix (commit history: `pod-4`) is two independent barriers:
-
-1. `assert(!boolField(deal, "released"), "deal already settled")` in both
-   `release()` and `refund()`;
-2. the commitment slot is **cleared** on payout, so even a bypassed flag would
-   hit `nothing delivered`.
-
-Pinned by `spike_s5_settlement_guard.py`, which asserts the *negative* cases:
+This is the one worth reading. `deliver()` and `deliver_bytes()` had **no settled
+check**, and they re-serialize the record with `released = false` while **refilling
+the commitment slot that `release()` clears**. So the seller could re-arm a settled
+deal:
 
 ```
-[PASS] first release pays the seller +0.9998 NEAR
-[PASS] second release REVERTS (deal already settled)
-[PASS] rejected call pays nothing            delta = +0.0000 NEAR
-[PASS] release on the second deal succeeds
-[PASS] refund AFTER release REVERTS (no double payout)
-[PASS] a fresh deal is still releasable
-[PASS] settled deal is marked released and its slot cleared
-VERDICT: VALIDATED
+release #1     -> PAID      +0.9998
+deliver AGAIN  -> ACCEPTED  (rewrites released=false, refills the commitment)
+release #2     -> PAID AGAIN +0.9998
+TOTAL for ONE 1-NEAR deal: 1.9996 NEAR
+```
+
+The README had claimed the two barriers were "independent" — **they were not**,
+because a delivery-writing path could set both. And because every deposit sits in
+one pooled balance, this escalates from "I get my own NEAR twice" to *draining
+every native deal in the escrow*. Our own regression missed it because it only
+tested release→release and release→refund, never the deliver path.
+
+Fixed in `pod-6`: a settled deal is **terminal**, asserted in `deliver` *and*
+`deliver_bytes`. The lesson is in the code comment — the guard belongs on **every
+state transition**, not just the payout functions.
+
+### 3. Predicate injection forged the deal's own fields (`pod-5`)
+
+The deal record is hand-built by concatenation and the parser returns the *first*
+match for a key. `predicate` was free text, so this predicate
+
+```
+x","released":true,"deadline":1,"p":"
+```
+
+broke out of its string and injected a second `deadline` **before** the real one.
+Since `deliver()` re-serializes via `numField(...,"deadline")`, the deal's
+effective deadline became `1` — so after a seller delivered, **`refund` succeeded
+immediately**: the buyer reclaims the escrow and keeps the artifact. A theft race,
+not just a lock. (Injecting `released:true` instead strands the funds.)
+
+Fixed in `pod-5`: `valid_predicate` / `valid_id` reject quote, backslash and
+non-printable bytes in `predicate`, `deal_id` and `seller`, in both `create_deal`
+and `ft_on_transfer` — a quote can no longer appear inside a value.
+
+### Known, documented, NOT fixed
+
+**Settlement is written before the payout promise.** `release()`/`refund()` set
+`released = true` and clear the commitment, *then* issue the transfer. On NEAR a
+failed promise does not roll back the caller's state, so if the transfer fails the
+deal reads settled while the money never moved — and neither `release` nor `refund`
+will touch it again. Realistic triggers: a NEP-141 seller who was never registered
+for storage (the common case for a fresh account), a `seller` account that does
+not exist, or a payout that runs out of gas. **Do not put real value behind this
+without adding a promise callback that un-settles the deal on failure.**
+
+### Regression suite
+
+```
+spike_s5_settlement_guard.py  -> 11/11  (repeat release, release→refund, AND the
+                                          deliver re-arm: deliver→release→deliver→release)
+spike_s8_injection_guard.py   ->  9/9   (crafted predicates rejected; record clean)
+exploit_repro_pod3.txt                  (the measured 2.2007 NEAR before/after)
 ```
 
 A security track that only shows green happy-path tests is showing nothing. This
-section, the repro numbers, and the regression test are the evidence that the
-state machine was actually attacked.
+section, the repro numbers, and the two regressions are the evidence that the state
+machine and the parser were actually attacked.
 
 
 
@@ -214,7 +293,7 @@ deploy time and the local build may differ if sources have changed since.
 
 ```bash
 python3 -c "import hashlib,base64;w=open('build/release/proof-of-delivery.wasm','rb').read();print(len(w),'bytes');print(base64.b64encode(hashlib.sha256(w).digest()))"
-# 33006 bytes -> the base58 form of that sha256 is the local build hash;
+# 33785 bytes -> the base58 form of that sha256 is the local build hash;
 ```
 
 Explorer links (`https://testnet.nearblocks.io/txns/<hash>`). Every one of these
@@ -294,7 +373,7 @@ with a clear message if it is too low). `verify_all.py`, `verifier.py` and
 
 ```bash
 python3 verify_all.py --build --selftest
-#   -> [PASS] G1 build (33,006 bytes, key exports present)
+#   -> [PASS] G1 build (33,785 bytes, key exports present)
 #      [PASS] G2 golden vectors           (Python matches values the CONTRACT produced)
 #      [PASS] G3 tamper breaks >=3 layers
 #      [PASS] G4 live contract == Python
