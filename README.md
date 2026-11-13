@@ -490,7 +490,9 @@ spike_s4_file_escrow.py  real FILE escrow by sha256, incl. a 1-byte substitution
 spike_s5_settlement_guard.py  settlement state machine: repeat release/refund are rejected
 spike_s7_two_agent_loop.py  the agent-economy demo: buyer + 2 sellers, bid → award → settle
 exploit_repro_pod3.txt   the measured double-payout output that motivated pod-4
-build/release/proof-of-delivery.wasm  committed so code_hash == sha256(wasm) is offline-checkable
+build/release/proof-of-delivery.wasm  committed so code_hash == sha256(wasm) is offline-checkable;
+                                  note that the local build hash differs from the
+                                  deployed code hash; rebuild and redeploy to match
 asset_A.bin, asset_B.bin the two test files (differ by one byte)
 SPIKE_RESULTS.md         measured results + the bugs the spikes caught
 X_POST_DRAFT.md          demo post + video shot list
